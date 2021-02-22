@@ -1,0 +1,20 @@
+* Subsonic support
+ - Build urls properly so server url username and passowrd can be
+   provided
+ - Support directory browsing properly rather than hard coding
+   Artist/Album/Track order
+ - alternatively use the tag browsing api
+
+* Music playing
+ - setup using the mpv json ipc for music playing
+ - Use the mpv socket to support
+   - playlist adding/creating
+   - play/pause/skip
+   - watch for finish
+ - support lastfm scrobbling
+
+* Podcast Support
+ - This can be implemented right now pretty easily once mpv tasks are
+   done -- or even in its current state
+ - Add transient menus for downloading/adding podcasts
+
