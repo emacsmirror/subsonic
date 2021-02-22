@@ -17,13 +17,13 @@
                             (car auth)
                           (error "Failed to find subsonic auth in .authinfo"))))
 
-(defun list->query (al)
-    (seq-reduce
-     (lambda (accu q)
-       (if (string-empty-p accu)
-           (concat "?" (car q) "=" (cadr q))
-         (concat accu "&" (car q) "=" (cadr q))))
-     al ""))
+(defun alist->query (al)
+  (seq-reduce
+   (lambda (accu q)
+     (if (string-empty-p accu)
+         (concat "?" (car q) "=" (cdr q))
+       (concat accu "&" (car q) "=" (cdr q))))
+   al ""))
 
 (defun get-json (url)
   (condition-case nil
@@ -38,11 +38,11 @@
   (concat "https://"
           (plist-get subsonic-auth :host)
           "/rest" endpoint
-          (list->query (append (list (list "u" (plist-get subsonic-auth :user))
-                                     (list "p" (funcall (plist-get subsonic-auth :secret)))
-                                     (list "c" "ElSonic")
-                                     (list "v" "1.16.0")
-                                     (list "f" "json"))
+          (alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
+                                 ("p" . ,(funcall (plist-get subsonic-auth :secret)))
+                                 ("c" . "ElSonic")
+                                 ("v" . "1.16.0")
+                                 ("f" . "json"))
                                extra-query))))
 
 (defun subsonic-artists-parse (data)
