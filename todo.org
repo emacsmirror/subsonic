@@ -1,6 +1,4 @@
 * Subsonic support
- - Build urls properly so server url username and passowrd can be
-   provided
  - Support directory browsing properly rather than hard coding
    Artist/Album/Track order
  - alternatively use the tag browsing api

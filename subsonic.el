@@ -7,11 +7,32 @@
 (require 'dash)
 (require 'json)
 (require 'transient)
+(require 'url)
 
 
 (defvar mpv--process nil)
 
+(defvar subsonic-auth (car (auth-source-search :port "subsonic")))
 
+(defun list->query (al)
+    (seq-reduce
+     (lambda (accu q)
+       (if (string-empty-p accu)
+           (concat "?" (car q) "=" (cadr q))
+         (concat accu "&" (car q) "=" (cadr q))))
+     al ""))
+
+(defun subsonic-build-url (endpoint extra-query)
+  (concat "https://"
+          (plist-get subsonic-auth :host)
+          "/rest" endpoint
+          (list->query (append (list (list "u" (plist-get subsonic-auth :user))
+                                     (list "p" (funcall (plist-get subsonic-auth :secret)))
+                                     (list "c" "ElSonic")
+                                     (list "v" "1.16.0")
+                                     (list "f" "json"))
+                               extra-query))))
+(subsonic-build-url "/stream.view" '(("id" "x") ("honk" "Y")))
 
 
 (defun subsonic-artists-parse (body)
@@ -77,14 +98,15 @@
 (defun subsonic-artists-refresh ()
   (setq tabulated-list-entries
         (subsonic-artists-parse
-         (with-temp-buffer (url-insert-file-contents artists-url)
+         (with-temp-buffer (url-insert-file-contents (subsonic-build-url "/getIndexes.view" '()))
                            (prog1 (buffer-string)
                              (kill-buffer))))))
 
 (defun subsonic-albums-refresh (id)
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (with-temp-buffer (url-insert-file-contents (concat folder-url id))
+         (with-temp-buffer (url-insert-file-contents
+                            (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id))))
                            (prog1 (buffer-string)
                              (kill-buffer))))))
 
@@ -92,7 +114,7 @@
   (setq tabulated-list-entries
         (subsonic-tracks-parse
          (with-temp-buffer (url-insert-file-contents
-                            (concat folder-url id))
+                            (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id))))
                            (prog1 (buffer-string)
                              (kill-buffer))))))
 
@@ -109,7 +131,7 @@
   (interactive)
   (start-process "mpv" nil "mpv"
                  "--no-terminal"
-                 (concat stream-url (tabulated-list-get-id))))
+                 (concat (subsonic-build-url "/stream.view" `(("id" ,(tabulated-list-get-id)))))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
