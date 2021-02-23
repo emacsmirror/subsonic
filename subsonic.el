@@ -1,15 +1,13 @@
 ;; -*- lexical-binding: t -*-
 
 ;;; Code:
-
-(require 's)
-(require 'dash)
 (require 'json)
-(require 'transient)
 (require 'url)
 
 
-;; Credit & thanks to the mpv.el project for much of the code here :)
+;; Credit & thanks to the mpv.el and docker-mode projects for examples
+;; and much of the code here :)
+
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
 
