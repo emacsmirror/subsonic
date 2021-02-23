@@ -34,12 +34,12 @@
   (let ((socket (make-temp-name
                  (expand-file-name "subsonic-mpv-" temporary-file-directory))))
     (setq subsonic-mpv--process (apply #'start-process
-                              (append
-                               (list "mpv-player" nil "mpv"
-                                     "--no-terminal"
-                                     "--no-video"
-                                     (concat "--input-ipc-server=" socket))
-                               args)))
+                                       (append
+                                        (list "mpv-player" nil "mpv"
+                                              "--no-terminal"
+                                              "--no-video"
+                                              (concat "--input-ipc-server=" socket))
+                                        args)))
     (set-process-query-on-exit-flag subsonic-mpv--process nil)
     (set-process-sentinel subsonic-mpv--process
                           (lambda (process _event)
@@ -52,13 +52,12 @@
       (while (not (file-exists-p socket))
         (sleep-for 0.05)))
     (setq subsonic-mpv--queue (tq-create
-                      (make-network-process :name "subsonic-mpv-socket"
-                                            :family 'local
-                                            :service socket)))
+                               (make-network-process :name "subsonic-mpv-socket"
+                                                     :family 'local
+                                                     :service socket)))
     (set-process-filter
      (tq-process subsonic-mpv--queue)
-     (lambda (_proc string)
-       nil))
+     (lambda (_proc string)))
     t))
 
 (defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
@@ -167,13 +166,21 @@
 (defun subsonic-play-tracks ()
   (interactive)
   (subsonic-mpv-start (mapcar (lambda (id)
-                       (subsonic-build-url "/stream.view" `(("id" . ,id))))
-                     (get-tracklist-id (tabulated-list-get-id)))))
+                                (subsonic-build-url "/stream.view" `(("id" . ,id))))
+                              (get-tracklist-id (tabulated-list-get-id)))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'subsonic-open-album) map))
 
+;;;###autoload
+(defun subsonic-toggle-playing ()
+  (interactive)
+  (tq-enqueue
+   subsonic-mpv--queue
+   (concat (json-serialize (list 'command  ["cycle" "pause"])) "\n")
+   "" nil (lambda (x y)))
+  t)
 
 (defvar subsonic-album-mode-map
   (let ((map (make-sparse-keymap)))
