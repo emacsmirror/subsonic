@@ -46,25 +46,17 @@
                                extra-query))))
 
 (defun subsonic-artists-parse (data)
-  (let* ((artists (assoc-default "index" (assoc-default "indexes" (assoc-default
-                                                                   "subsonic-response"
-                                                                   data))))
+  (let* ((artists (assoc-default "index" (assoc-default "indexes" (assoc-default "subsonic-response" data))))
          (result (seq-reduce (lambda (accu artist-index)
                                (append accu (mapcar (lambda (artist)
-                                                      (list (assoc-default "id"
-                                                                           artist)
-                                                            (vector
-                                                             (assoc-default
-                                                              "name" artist))))
+                                                      (list (assoc-default "id"artist)
+                                                            (vector (assoc-default "name" artist))))
                                                     (assoc-default "artist" artist-index))))
                              artists '()))) result))
 
 
 (defun subsonic-albums-parse (data)
-  (let* ((albums (assoc-default "child" (assoc-default "directory"
-                                                       (assoc-default
-                                                        "subsonic-response"
-                                                        data))))
+  (let* ((albums (assoc-default "child" (assoc-default "directory" (assoc-default "subsonic-response" data))))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
                                  (vector (assoc-default "title" album))))
@@ -112,9 +104,10 @@
 
 (defun subsonic-play-tracks ()
   (interactive)
-  (start-process "mpv" nil "mpv"
-                 "--no-terminal"
-                 (concat (subsonic-build-url "/stream.view" `(("id" ,(tabulated-list-get-id)))))))
+  (start-process
+   "mpv" nil "mpv"
+   "--no-terminal"
+   (concat (subsonic-build-url "/stream.view" `(("id" ,(tabulated-list-get-id)))))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
