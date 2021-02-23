@@ -39,11 +39,11 @@
           (plist-get subsonic-auth :host)
           "/rest" endpoint
           (alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
-                                 ("p" . ,(funcall (plist-get subsonic-auth :secret)))
-                                 ("c" . "ElSonic")
-                                 ("v" . "1.16.0")
-                                 ("f" . "json"))
-                               extra-query))))
+                                  ("p" . ,(funcall (plist-get subsonic-auth :secret)))
+                                  ("c" . "ElSonic")
+                                  ("v" . "1.16.0")
+                                  ("f" . "json"))
+                                extra-query))))
 
 (defun subsonic-artists-parse (data)
   (let* ((artists (assoc-default "index" (assoc-default "indexes" (assoc-default "subsonic-response" data))))
@@ -54,6 +54,11 @@
                                                     (assoc-default "artist" artist-index))))
                              artists '()))) result))
 
+(defun recursive-assoc (data keys)
+  (if keys
+      (recursive-assoc (assoc-default (car keys) data)
+                       (cdr keys))
+    data))
 
 (defun subsonic-albums-parse (data)
   (let* ((albums (assoc-default "child" (assoc-default "directory" (assoc-default "subsonic-response" data))))
