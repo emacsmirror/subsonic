@@ -1,5 +1,4 @@
-;; This buffer is for text that is not saved, and for Lisp evaluation.
-;; To create a file, visit it with C-x C-f and enter text in its buffer.
+;; -*- lexical-binding: t -*-
 
 ;;; Code:
 
@@ -34,6 +33,13 @@
                                                    (kill-buffer)))))
     (json-readtable-error (error "could not read \"%s\" as json" body))))
 
+
+(defun recursive-assoc (data keys)
+  (if keys
+      (recursive-assoc (assoc-default (car keys) data)
+                       (cdr keys))
+    data))
+
 (defun subsonic-build-url (endpoint extra-query)
   (concat "https://"
           (plist-get subsonic-auth :host)
@@ -46,7 +52,7 @@
                                 extra-query))))
 
 (defun subsonic-artists-parse (data)
-  (let* ((artists (assoc-default "index" (assoc-default "indexes" (assoc-default "subsonic-response" data))))
+  (let* ((artists (recursive-assoc data '("subsonic-response" "indexes" "index")))
          (result (seq-reduce (lambda (accu artist-index)
                                (append accu (mapcar (lambda (artist)
                                                       (list (assoc-default "id"artist)
@@ -54,14 +60,9 @@
                                                     (assoc-default "artist" artist-index))))
                              artists '()))) result))
 
-(defun recursive-assoc (data keys)
-  (if keys
-      (recursive-assoc (assoc-default (car keys) data)
-                       (cdr keys))
-    data))
 
 (defun subsonic-albums-parse (data)
-  (let* ((albums (assoc-default "child" (assoc-default "directory" (assoc-default "subsonic-response" data))))
+  (let* ((albums (recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
                                  (vector (assoc-default "title" album))))
@@ -70,10 +71,7 @@
 
 
 (defun subsonic-tracks-parse (data)
-  (let* ((tracks (assoc-default "child" (assoc-default "directory"
-                                                       (assoc-default
-                                                        "subsonic-response"
-                                                        data))))
+  (let* ((tracks (recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (track)
                            (let* ((duration (assoc-default "duration" track)))
                              (list (assoc-default "id" track)
@@ -91,12 +89,12 @@
 (defun subsonic-albums-refresh (id)
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id)))))))
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
 
 (defun subsonic-tracks-refresh (id)
   (setq tabulated-list-entries
         (subsonic-tracks-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id)))))))
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
 
 
 (defun subsonic-open-album ()
