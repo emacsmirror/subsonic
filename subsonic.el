@@ -9,7 +9,59 @@
 (require 'url)
 
 
-(defvar mpv--process nil)
+;; Credit & thanks to the mpv.el project for much of the code here :)
+(defvar subsonic-mpv--process nil)
+(defvar subsonic-mpv--queue nil)
+
+(defun subsonic-mpv-kill ()
+  "Kill the mpv process."
+  (interactive)
+  (when subsonic-mpv--queue
+    (tq-close subsonic-mpv--queue))
+  (when (subsonic-mpv-live-p)
+    (kill-process subsonic-mpv--process))
+  (with-timeout
+      (0.5 (error "Failed to kill mpv"))
+    (while (subsonic-mpv-live-p)
+      (sleep-for 0.05)))
+  (setq subsonic-mpv--process nil)
+  (setq subsonic-mpv--queue nil))
+
+(defun subsonic-mpv-live-p ()
+  "Return non-nil if inferior mpv is running."
+  (and subsonic-mpv--process (eq (process-status subsonic-mpv--process) 'run)))
+
+(defun subsonic-mpv-start (args)
+  (subsonic-mpv-kill)
+  (let ((socket (make-temp-name
+                 (expand-file-name "subsonic-mpv-" temporary-file-directory))))
+    (setq subsonic-mpv--process (apply #'start-process
+                              (append
+                               (list "mpv-player" nil "mpv"
+                                     "--no-terminal"
+                                     "--no-video"
+                                     (concat "--input-ipc-server=" socket))
+                               args)))
+    (set-process-query-on-exit-flag subsonic-mpv--process nil)
+    (set-process-sentinel subsonic-mpv--process
+                          (lambda (process _event)
+                            (when (memq (process-status process) '(exit signal))
+                              (subsonic-mpv-kill)
+                              (when (file-exists-p socket)
+                                (with-demoted-errors (delete-file socket))))))
+    (with-timeout (0.5 (subsonic-mpv-kill)
+                       (error "Failed to connect to mpv"))
+      (while (not (file-exists-p socket))
+        (sleep-for 0.05)))
+    (setq subsonic-mpv--queue (tq-create
+                      (make-network-process :name "subsonic-mpv-socket"
+                                            :family 'local
+                                            :service socket)))
+    (set-process-filter
+     (tq-process subsonic-mpv--queue)
+     (lambda (_proc string)
+       nil))
+    t))
 
 (defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
                         (if auth
@@ -105,12 +157,20 @@
   (interactive)
   (subsonic-tracks (tabulated-list-get-id)))
 
+(defun get-tracklist-id (id)
+  (reverse (seq-reduce (lambda (accu current)
+                         (if (equal (car current) id)
+                             (list (car current))
+                           (if (null accu)
+                               '()
+                             (cons (car current) accu))))
+                       tabulated-list-entries '())))
+
 (defun subsonic-play-tracks ()
   (interactive)
-  (start-process
-   "mpv" nil "mpv"
-   "--no-terminal"
-   (concat (subsonic-build-url "/stream.view" `(("id" ,(tabulated-list-get-id)))))))
+  (subsonic-mpv-start (mapcar (lambda (id)
+                       (subsonic-build-url "/stream.view" `(("id" . ,id))))
+                     (get-tracklist-id (tabulated-list-get-id)))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
