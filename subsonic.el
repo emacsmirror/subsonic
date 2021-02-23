@@ -25,6 +25,15 @@
          (concat accu "&" (car q) "=" (cadr q))))
      al ""))
 
+(defun get-json (url)
+  (condition-case nil
+      (let* ((json-array-type 'list)
+             (json-key-type 'string))
+        (json-read-from-string (with-temp-buffer (url-insert-file-contents url)
+                                                 (prog1 (buffer-string)
+                                                   (kill-buffer)))))
+    (json-readtable-error (error "could not read \"%s\" as json" body))))
+
 (defun subsonic-build-url (endpoint extra-query)
   (concat "https://"
           (plist-get subsonic-auth :host)
@@ -35,91 +44,62 @@
                                      (list "v" "1.16.0")
                                      (list "f" "json"))
                                extra-query))))
-(subsonic-build-url "/stream.view" '(("id" "x") ("honk" "Y")))
+
+(defun subsonic-artists-parse (data)
+  (let* ((artists (assoc-default "index" (assoc-default "indexes" (assoc-default
+                                                                   "subsonic-response"
+                                                                   data))))
+         (result (seq-reduce (lambda (accu artist-index)
+                               (append accu (mapcar (lambda (artist)
+                                                      (list (assoc-default "id"
+                                                                           artist)
+                                                            (vector
+                                                             (assoc-default
+                                                              "name" artist))))
+                                                    (assoc-default "artist" artist-index))))
+                             artists '()))) result))
 
 
-(defun subsonic-artists-parse (body)
-  (condition-case nil (let* ((json-array-type 'list)
-                             (json-key-type 'string)
-                             (data (json-read-from-string body))
-                             (artists (assoc-default "index" (assoc-default "indexes" (assoc-default
-                                                                                       "subsonic-response"
-                                                                                       data))))
-                             (result (seq-reduce (lambda (accu artist-index)
-                                                   (append accu (mapcar (lambda (artist)
-                                                                          (list (assoc-default "id"
-                                                                                               artist)
-                                                                                (vector
-                                                                                 (assoc-default
-                                                                                  "name" artist))))
-                                                                        (assoc-default "artist" artist-index))))
-                                                 artists '()))) result)
-    (json-readtable-error
-     (error
-      "Could not read following string as json:\n%s"
-      body))))
+(defun subsonic-albums-parse (data)
+  (let* ((albums (assoc-default "child" (assoc-default "directory"
+                                                       (assoc-default
+                                                        "subsonic-response"
+                                                        data))))
+         (result (mapcar (lambda (album)
+                           (list (assoc-default "id" album)
+                                 (vector (assoc-default "title" album))))
+                         albums)))
+    result))
 
-(defun subsonic-albums-parse (body)
-  (condition-case nil (let* ((json-array-type 'list)
-                             (json-key-type 'string)
-                             (data (json-read-from-string body))
-                             (albums (assoc-default "child" (assoc-default "directory"
-                                                                           (assoc-default
-                                                                            "subsonic-response"
-                                                                            data))))
-                             (result (mapcar (lambda (album)
-                                               (list (assoc-default "id" album)
-                                                     (vector (assoc-default "title" album))))
-                                             albums)))
-                        result)
-    (json-readtable-error
-     (error
-      "Could not read following string as json:\n%s"
-      body))))
 
-(defun subsonic-tracks-parse (body)
-  (condition-case nil (let* ((json-array-type 'list)
-                             (json-key-type 'string)
-                             (data (json-read-from-string body))
-                             (tracks (assoc-default "child" (assoc-default "directory"
-                                                                           (assoc-default
-                                                                            "subsonic-response"
-                                                                            data))))
-                             (result (mapcar (lambda (track)
-                                               (let* ((duration (assoc-default "duration" track)))
-                                                 (list (assoc-default "id" track)
-                                                       (vector (assoc-default "title" track)
-                                                               (format-seconds "%m:%.2s" duration)
-                                                               (format "%d" (assoc-default "track" track))))))
-                                             tracks)))
-                        result)
-    (json-readtable-error
-     (error
-      "Could not read following string as json:\n%s"
-      body))))
+(defun subsonic-tracks-parse (data)
+  (let* ((tracks (assoc-default "child" (assoc-default "directory"
+                                                       (assoc-default
+                                                        "subsonic-response"
+                                                        data))))
+         (result (mapcar (lambda (track)
+                           (let* ((duration (assoc-default "duration" track)))
+                             (list (assoc-default "id" track)
+                                   (vector (assoc-default "title" track)
+                                           (format-seconds "%m:%.2s" duration)
+                                           (format "%d" (assoc-default "track" track))))))
+                         tracks)))
+    result))
 
 (defun subsonic-artists-refresh ()
   (setq tabulated-list-entries
         (subsonic-artists-parse
-         (with-temp-buffer (url-insert-file-contents (subsonic-build-url "/getIndexes.view" '()))
-                           (prog1 (buffer-string)
-                             (kill-buffer))))))
+         (get-json (subsonic-build-url "/getIndexes.view" '())))))
 
 (defun subsonic-albums-refresh (id)
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (with-temp-buffer (url-insert-file-contents
-                            (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id))))
-                           (prog1 (buffer-string)
-                             (kill-buffer))))))
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id)))))))
 
 (defun subsonic-tracks-refresh (id)
   (setq tabulated-list-entries
         (subsonic-tracks-parse
-         (with-temp-buffer (url-insert-file-contents
-                            (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id))))
-                           (prog1 (buffer-string)
-                             (kill-buffer))))))
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" ,id)))))))
 
 
 (defun subsonic-open-album ()
