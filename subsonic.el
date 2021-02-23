@@ -12,7 +12,10 @@
 
 (defvar mpv--process nil)
 
-(defvar subsonic-auth (car (auth-source-search :port "subsonic")))
+(defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
+                        (if auth
+                            (car auth)
+                          (error "Failed to find subsonic auth in .authinfo"))))
 
 (defun list->query (al)
     (seq-reduce
