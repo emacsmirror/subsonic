@@ -13,11 +13,9 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 ;;; Code:
 (require 'json)
 (require 'url)
-
 
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
@@ -114,24 +112,24 @@
                                   ("f" . "json"))
                                 extra-query))))
 
-(defun subsonic-artists-parse (data)
-  (let* ((artists (recursive-assoc data '("subsonic-response" "indexes" "index")))
-         (result (seq-reduce (lambda (accu artist-index)
-                               (append accu (mapcar (lambda (artist)
-                                                      (list (assoc-default "id"artist)
-                                                            (vector (assoc-default "name" artist))))
-                                                    (assoc-default "artist" artist-index))))
-                             artists '()))) result))
 
+;;;###autoload
+(defun subsonic-toggle-playing ()
+  (interactive)
+  (tq-enqueue
+   subsonic-mpv--queue
+   (concat (json-serialize (list 'command  ["cycle" "pause"])) "\n")
+   "" nil (lambda (x y)))
+  t)
 
-(defun subsonic-albums-parse (data)
-  (let* ((albums (recursive-assoc data '("subsonic-response" "directory" "child")))
-         (result (mapcar (lambda (album)
-                           (list (assoc-default "id" album)
-                                 (vector (assoc-default "title" album))))
-                         albums)))
-    result))
-
+(defun get-tracklist-id (id)
+  (reverse (seq-reduce (lambda (accu current)
+                         (if (equal (car current) id)
+                             (list (car current))
+                           (if (null accu)
+                               '()
+                             (cons (car current) accu))))
+                       tabulated-list-entries '())))
 
 (defun subsonic-tracks-parse (data)
   (let* ((tracks (recursive-assoc data '("subsonic-response" "directory" "child")))
@@ -144,6 +142,121 @@
                          tracks)))
     result))
 
+(defun subsonic-tracks-refresh (id)
+  (setq tabulated-list-entries
+        (subsonic-tracks-parse
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
+
+
+
+(defun subsonic-play-tracks ()
+  (interactive)
+  (subsonic-mpv-start (mapcar (lambda (id)
+                                (subsonic-build-url "/stream.view" `(("id" . ,id))))
+                              (get-tracklist-id (tabulated-list-get-id)))))
+
+(defvar subsonic-tracks-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'subsonic-play-tracks) map))
+
+(defun subsonic-tracks (id)
+  (let ((new-buff (get-buffer-create "*subsonic-tracks*")))
+    (set-buffer new-buff)
+    (subsonic-tracks-mode)
+    (subsonic-tracks-refresh id)
+    (tabulated-list-revert)
+    (pop-to-buffer-same-window (current-buffer))))
+
+(define-derived-mode subsonic-tracks-mode tabulated-list-mode
+  "Subsonic Tracks"
+  (setq tabulated-list-format [("Title" 30 t) ("Duration" 10 t) ("Track" 10 t)])
+  (setq tabulated-list-padding 2)
+  (tabulated-list-init-header))
+
+;;;
+;;; Albums
+;;;
+
+(defun subsonic-albums-parse (data)
+  (let* ((albums (recursive-assoc data '("subsonic-response" "directory" "child")))
+         (result (mapcar (lambda (album)
+                           (list (assoc-default "id" album)
+                                 (vector (assoc-default "title" album))))
+                         albums)))
+    result))
+
+(defun subsonic-albums-refresh (id)
+  (setq tabulated-list-entries
+        (subsonic-albums-parse
+         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
+
+(defun subsonic-open-tracks ()
+  (interactive)
+  (subsonic-tracks (tabulated-list-get-id)))
+
+(defvar subsonic-album-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'subsonic-open-tracks) map))
+
+(defun subsonic-albums (id)
+  (let ((new-buff (get-buffer-create "*subsonic-albums*")))
+    (set-buffer new-buff)
+    (subsonic-album-mode)
+    (subsonic-albums-refresh id)
+    (tabulated-list-revert)
+    (pop-to-buffer-same-window (current-buffer))))
+
+(define-derived-mode subsonic-album-mode tabulated-list-mode
+  "Subsonic Albums"
+  (setq tabulated-list-format [("Albums" 30 t)])
+  (setq tabulated-list-padding 2)
+  (tabulated-list-init-header))
+
+;;;
+;;; Artists
+;;;
+(defun subsonic-open-album ()
+  (interactive)
+  (subsonic-albums (tabulated-list-get-id)))
+
+(defun subsonic-artists-parse (data)
+  (let* ((artists (recursive-assoc data '("subsonic-response" "indexes" "index")))
+         (result (seq-reduce (lambda (accu artist-index)
+                               (append accu (mapcar (lambda (artist)
+                                                      (list (assoc-default "id"artist)
+                                                            (vector (assoc-default "name" artist))))
+                                                    (assoc-default "artist" artist-index))))
+                             artists '()))) result))
+
+(defun subsonic-artists-refresh ()
+  (setq tabulated-list-entries
+        (subsonic-artists-parse
+         (get-json (subsonic-build-url "/getIndexes.view" '())))))
+
+(defvar subsonic-artist-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'subsonic-open-album) map))
+
+;;;###autoload
+(defun subsonic-artists ()
+  "List subsonic artists."
+  (interactive)
+  (let ((new-buff (get-buffer-create "*subsonic-artists*")))
+    (set-buffer new-buff)
+    (setq buffer-read-only t)
+    (subsonic-artist-mode)
+    (pop-to-buffer (current-buffer))))
+
+(define-derived-mode subsonic-artist-mode tabulated-list-mode
+  "Subsonic Artists"
+  (setq tabulated-list-format [("Artist" 30 t)])
+  (setq tabulated-list-padding 2)
+  (add-hook 'tabulated-list-revert-hook 'subsonic-artists-refresh nil t)
+  (tabulated-list-init-header))
+
+;;;
+;;; Podcasts
+;;;
 (defun subsonic-podcasts-parse (data)
   (let* ((podcasts (recursive-assoc data '("subsonic-response" "podcasts" "channel")))
          (result (mapcar (lambda (channel)
@@ -151,6 +264,40 @@
                                  (vector (assoc-default "title" channel))))
                          podcasts)))
     result))
+
+(defun subsonic-podcasts-refresh ()
+  (setq tabulated-list-entries
+        (subsonic-podcasts-parse
+         (get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
+
+(defun subsonic-open-podcast-episodes ()
+  (interactive)
+  (subsonic-podcast-episodes (tabulated-list-get-id)))
+
+(defvar subsonic-podcast-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'subsonic-open-podcast-episodes) map))
+
+;;;###autoload
+(defun subsonic-podcasts ()
+  "List subsonic artists."
+  (interactive)
+  (let ((new-buff (get-buffer-create "*subsonic-podcasts*")))
+    (set-buffer new-buff)
+    (setq buffer-read-only t)
+    (subsonic-podcast-mode)
+    (pop-to-buffer (current-buffer))))
+
+(define-derived-mode subsonic-podcast-mode tabulated-list-mode
+  "Subsonic Podcasts"
+  (setq tabulated-list-format [("Podcasts" 30 t)])
+  (setq tabulated-list-padding 2)
+  (add-hook 'tabulated-list-revert-hook 'subsonic-podcasts-refresh nil t)
+  (tabulated-list-init-header))
+
+;;;
+;;; Podcast episodes
+;;;
 
 (defun subsonic-podcast-episodes-parse (data)
   (let* ((episodes (assoc-default "episode"
@@ -165,25 +312,9 @@
                          episodes)))
     result))
 
-(defun subsonic-artists-refresh ()
-  (setq tabulated-list-entries
-        (subsonic-artists-parse
-         (get-json (subsonic-build-url "/getIndexes.view" '())))))
-
-(defun subsonic-albums-refresh (id)
-  (setq tabulated-list-entries
-        (subsonic-albums-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
-
-(defun subsonic-tracks-refresh (id)
-  (setq tabulated-list-entries
-        (subsonic-tracks-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
-
-(defun subsonic-podcasts-refresh ()
-  (setq tabulated-list-entries
-        (subsonic-podcasts-parse
-         (get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
+(defun subsonic-play-podcast ()
+  (interactive)
+  (subsonic-mpv-start (list (subsonic-build-url "/stream.view" `(("id" . ,(tabulated-list-get-id)))))))
 
 (defun subsonic-podcasts-episode-refresh (id)
   (setq tabulated-list-entries
@@ -191,93 +322,9 @@
          (get-json (subsonic-build-url "/getPodcasts.view" `(("id" . ,id)
                                                              ("includeEpisodes" . "true")))))))
 
-(defun subsonic-open-album ()
-  (interactive)
-  (subsonic-albums (tabulated-list-get-id)))
-
-(defun subsonic-open-tracks ()
-  (interactive)
-  (subsonic-tracks (tabulated-list-get-id)))
-
-(defun subsonic-open-podcast-episodes ()
-  (interactive)
-  (subsonic-podcast-episodes (tabulated-list-get-id)))
-
-(defun get-tracklist-id (id)
-  (reverse (seq-reduce (lambda (accu current)
-                         (if (equal (car current) id)
-                             (list (car current))
-                           (if (null accu)
-                               '()
-                             (cons (car current) accu))))
-                       tabulated-list-entries '())))
-
-(defun subsonic-play-tracks ()
-  (interactive)
-  (subsonic-mpv-start (mapcar (lambda (id)
-                                (subsonic-build-url "/stream.view" `(("id" . ,id))))
-                              (get-tracklist-id (tabulated-list-get-id)))))
-
-
-(defun subsonic-play-podcast ()
-  (interactive)
-  (subsonic-mpv-start (list (subsonic-build-url "/stream.view" `(("id" . ,(tabulated-list-get-id)))))))
-
-
-(defvar subsonic-artist-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-album) map))
-
-;;;###autoload
-(defun subsonic-toggle-playing ()
-  (interactive)
-  (tq-enqueue
-   subsonic-mpv--queue
-   (concat (json-serialize (list 'command  ["cycle" "pause"])) "\n")
-   "" nil (lambda (x y)))
-  t)
-
-(defvar subsonic-album-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-tracks) map))
-
-(defvar subsonic-tracks-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-play-tracks) map))
-
-(defvar subsonic-podcast-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-podcast-episodes) map))
-
 (defvar subsonic-podcast-episodes-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'subsonic-play-podcast) map))
-
-;;;###autoload
-(defun subsonic-artists ()
-  "List subsonic artists."
-  (interactive)
-  (let ((new-buff (get-buffer-create "*subsonic-artists*")))
-    (set-buffer new-buff)
-    (setq buffer-read-only t)
-    (subsonic-artist-mode)
-    (pop-to-buffer (current-buffer))))
-
-(defun subsonic-albums (id)
-  (let ((new-buff (get-buffer-create "*subsonic-albums*")))
-    (set-buffer new-buff)
-    (subsonic-album-mode)
-    (subsonic-albums-refresh id)
-    (tabulated-list-revert)
-    (pop-to-buffer-same-window (current-buffer))))
-
-(defun subsonic-tracks (id)
-  (let ((new-buff (get-buffer-create "*subsonic-tracks*")))
-    (set-buffer new-buff)
-    (subsonic-tracks-mode)
-    (subsonic-tracks-refresh id)
-    (tabulated-list-revert)
-    (pop-to-buffer-same-window (current-buffer))))
 
 (defun subsonic-podcast-episodes (id)
   (let ((new-buff (get-buffer-create "*subsonic-podcast-episodes*")))
@@ -286,43 +333,6 @@
     (subsonic-podcasts-episode-refresh id)
     (tabulated-list-revert)
     (pop-to-buffer-same-window (current-buffer))))
-
-;;;###autoload
-(defun subsonic-podcasts ()
-  "List subsonic artists."
-  (interactive)
-  (let ((new-buff (get-buffer-create "*subsonic-podcasts*")))
-    (set-buffer new-buff)
-    (setq buffer-read-only t)
-    (subsonic-podcast-mode)
-    (pop-to-buffer (current-buffer))))
-
-(define-derived-mode subsonic-tracks-mode tabulated-list-mode
-  "Subsonic Tracks"
-  (setq tabulated-list-format [("Title" 30 t) ("Duration" 10 t) ("Track" 10 t)])
-  (setq tabulated-list-padding 2)
-  (tabulated-list-init-header))
-
-(define-derived-mode subsonic-album-mode tabulated-list-mode
-  "Subsonic Albums"
-  (setq tabulated-list-format [("Albums" 30 t)])
-  (setq tabulated-list-padding 2)
-  (tabulated-list-init-header))
-
-
-(define-derived-mode subsonic-artist-mode tabulated-list-mode
-  "Subsonic Artists"
-  (setq tabulated-list-format [("Artist" 30 t)])
-  (setq tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook 'subsonic-artists-refresh nil t)
-  (tabulated-list-init-header))
-
-(define-derived-mode subsonic-podcast-mode tabulated-list-mode
-  "Subsonic Podcasts"
-  (setq tabulated-list-format [("Podcasts" 30 t)])
-  (setq tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook 'subsonic-podcasts-refresh nil t)
-  (tabulated-list-init-header))
 
 (define-derived-mode subsonic-podcast-episodes-mode tabulated-list-mode
   "Subsonic Podcast Episodes"
