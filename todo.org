@@ -12,7 +12,4 @@
  - support lastfm scrobbling
 
 * Podcast Support
- - This can be implemented right now pretty easily once mpv tasks are
-   done -- or even in its current state
  - Add transient menus for downloading/adding podcasts
-
