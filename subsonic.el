@@ -307,7 +307,7 @@
          (result (mapcar (lambda (episode)
                            (list (assoc-default "id" episode)
                                  (vector (assoc-default "title" episode)
-                                         (format-seconds "%m:%.2s" (assoc-default "duration" episode))
+                                         (format-seconds "%h:%.2m:%.2s" (assoc-default "duration" episode))
                                          (assoc-default "status" episode))))
                          episodes)))
     result))
