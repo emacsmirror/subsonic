@@ -16,6 +16,7 @@
 ;;; Code:
 (require 'json)
 (require 'url)
+(require 'transient)
 
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
@@ -322,10 +323,24 @@
          (get-json (subsonic-build-url "/getPodcasts.view" `(("id" . ,id)
                                                              ("includeEpisodes" . "true")))))))
 
+(defun subsonic-download-podcast-episode ()
+  (interactive)
+  (get-json (subsonic-build-url "/downloadPodcastEpisode.view" `(("id" . ,(tabulated-list-get-id))))))
+
+(transient-define-prefix subsonic-podcast-episode-help ()
+  "Help transient for docker images."
+  ["Subsonic pocast episode help"
+   ("d"   "Download"      subsonic-download-podcast-episode)
+   ("RET" "Start playing" subsonic-play-podcast)])
+
+
 (defvar subsonic-podcast-episodes-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-play-podcast) map))
+    (define-key map (kbd "?") 'subsonic-podcast-episode-help)
+    (define-key map (kbd "RET") 'subsonic-play-podcast)
+    (define-key map (kbd "d") 'subsonic-download-podcast-episode) map))
 
+;;;###autoload
 (defun subsonic-podcast-episodes (id)
   (let ((new-buff (get-buffer-create "*subsonic-podcast-episodes*")))
     (set-buffer new-buff)
