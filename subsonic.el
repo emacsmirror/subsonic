@@ -227,10 +227,10 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defun subsonic-albums-parse (data)
   "Retrieve a list of albums from some parsed json DATA."
-  (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "directory" "child")))
+  (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "artist" "album")))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
-                                 (vector (assoc-default "title" album))))
+                                 (vector (assoc-default "name" album))))
                          albums)))
     result))
 
@@ -238,7 +238,7 @@ EXTRA-QUERY is used for any extra query parameters"
   "Refresh the albums list for a given artist ID."
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (subsonic-get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
+         (subsonic-get-json (subsonic-build-url "/getArtist.view" `(("id" . ,id)))))))
 
 (defun subsonic-open-tracks ()
   "Open a list of tracks at point."
@@ -274,10 +274,10 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defun subsonic-artists-parse (data)
   "Retrieve a list of artists from some parsed json DATA."
-  (let* ((artists (subsonic-recursive-assoc data '("subsonic-response" "indexes" "index")))
+  (let* ((artists (subsonic-recursive-assoc data '("subsonic-response" "artists" "index")))
          (result (seq-reduce (lambda (accu artist-index)
                                (append accu (mapcar (lambda (artist)
-                                                      (list (assoc-default "id"artist)
+                                                      (list (assoc-default "id" artist)
                                                             (vector (assoc-default "name" artist))))
                                                     (assoc-default "artist" artist-index))))
                              artists '()))) result))
@@ -286,7 +286,7 @@ EXTRA-QUERY is used for any extra query parameters"
   "Refresh the list of subsonic artists."
   (setq tabulated-list-entries
         (subsonic-artists-parse
-         (subsonic-get-json (subsonic-build-url "/getIndexes.view" '())))))
+         (subsonic-get-json (subsonic-build-url "/getArtists.view" '())))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
