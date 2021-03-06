@@ -1,4 +1,10 @@
-;; -*- lexical-binding: t -*-
+;;; subsonic.el --- browse and play music from subsonic servers with mpv  -*- lexical-binding: t; -*-
+
+;; Author: Alex McGrath <amk@amk.ie>
+;; URL: https://git.sr.ht/~amk/subsonic.el
+;; Version: 0.1.0
+;; Keywords: multimedia
+;; Package-Requires: ((emacs "27") (json "1.4") (transient "0.2"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -13,6 +19,16 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+;;; Commentary:
+
+;; This package is meant to act as a simple subsonic frontend that
+;; uses mpv for playing the actual music.  Use a ~/.authinfo.gpg file with
+;; contents like the following to setup auth
+;;
+;; machine SUBSONIC_URL login USERNAME password PASSSWORD port subsonic
+;;
+;; port is required to be 'subsonic' for this to work
+
 ;;; Code:
 (require 'json)
 (require 'url)
@@ -21,6 +37,13 @@
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
 
+(defcustom subsonic-mpv "mpv"
+  "Path to the mpv executable")
+
+(defcustom subsonic-defualt-volume 140
+  "default % volume for mpv to use")
+
+(defvar subsonic-mpv--volume subsonic-defualt-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
 
@@ -48,9 +71,10 @@
                  (expand-file-name "subsonic-mpv-" temporary-file-directory))))
     (setq subsonic-mpv--process (apply #'start-process
                                        (append
-                                        (list "mpv-player" nil "mpv"
+                                        (list "mpv-player" nil subsonic-mpv
                                               "--no-terminal"
                                               "--no-video"
+                                              (format "--volume=%d" subsonic-mpv--volume)
                                               (concat "--input-ipc-server=" socket))
                                         args)))
     (set-process-query-on-exit-flag subsonic-mpv--process nil)
@@ -78,7 +102,7 @@
                             (car auth)
                           (error "Failed to find subsonic auth in .authinfo"))))
 
-(defun alist->query (al)
+(defun subsonic-alist->query (al)
   (seq-reduce
    (lambda (accu q)
      (if (string-empty-p accu)
@@ -96,9 +120,9 @@
     (json-readtable-error (error "could not read \"%s\" as json" body))))
 
 
-(defun recursive-assoc (data keys)
+(defun subsonic-recursive-assoc (data keys)
   (if keys
-      (recursive-assoc (assoc-default (car keys) data)
+      (subsonic-recursive-assoc (assoc-default (car keys) data)
                        (cdr keys))
     data))
 
@@ -106,12 +130,12 @@
   (concat "https://"
           (plist-get subsonic-auth :host)
           "/rest" endpoint
-          (alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
-                                  ("p" . ,(funcall (plist-get subsonic-auth :secret)))
-                                  ("c" . "ElSonic")
-                                  ("v" . "1.16.0")
-                                  ("f" . "json"))
-                                extra-query))))
+          (subsonic-alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
+                                           ("p" . ,(funcall (plist-get subsonic-auth :secret)))
+                                           ("c" . "ElSonic")
+                                           ("v" . "1.16.0")
+                                           ("f" . "json"))
+                                         extra-query))))
 
 
 ;;;###autoload
@@ -123,7 +147,7 @@
    "" nil (lambda (x y)))
   t)
 
-(defun get-tracklist-id (id)
+(defun subsonic-get-tracklist-id (id)
   (reverse (seq-reduce (lambda (accu current)
                          (if (equal (car current) id)
                              (list (car current))
@@ -133,7 +157,7 @@
                        tabulated-list-entries '())))
 
 (defun subsonic-tracks-parse (data)
-  (let* ((tracks (recursive-assoc data '("subsonic-response" "directory" "child")))
+  (let* ((tracks (subsonic-recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (track)
                            (let* ((duration (assoc-default "duration" track)))
                              (list (assoc-default "id" track)
@@ -154,7 +178,7 @@
   (interactive)
   (subsonic-mpv-start (mapcar (lambda (id)
                                 (subsonic-build-url "/stream.view" `(("id" . ,id))))
-                              (get-tracklist-id (tabulated-list-get-id)))))
+                              (subsonic-get-tracklist-id (tabulated-list-get-id)))))
 
 (defvar subsonic-tracks-mode-map
   (let ((map (make-sparse-keymap)))
@@ -179,7 +203,7 @@
 ;;;
 
 (defun subsonic-albums-parse (data)
-  (let* ((albums (recursive-assoc data '("subsonic-response" "directory" "child")))
+  (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
                                  (vector (assoc-default "title" album))))
@@ -221,7 +245,7 @@
   (subsonic-albums (tabulated-list-get-id)))
 
 (defun subsonic-artists-parse (data)
-  (let* ((artists (recursive-assoc data '("subsonic-response" "indexes" "index")))
+  (let* ((artists (subsonic-recursive-assoc data '("subsonic-response" "indexes" "index")))
          (result (seq-reduce (lambda (accu artist-index)
                                (append accu (mapcar (lambda (artist)
                                                       (list (assoc-default "id"artist)
@@ -259,7 +283,7 @@
 ;;; Podcasts
 ;;;
 (defun subsonic-podcasts-parse (data)
-  (let* ((podcasts (recursive-assoc data '("subsonic-response" "podcasts" "channel")))
+  (let* ((podcasts (subsonic-recursive-assoc data '("subsonic-response" "podcasts" "channel")))
          (result (mapcar (lambda (channel)
                            (list (assoc-default "id" channel)
                                  (vector (assoc-default "title" channel))))
@@ -302,7 +326,7 @@
 
 (defun subsonic-podcast-episodes-parse (data)
   (let* ((episodes (assoc-default "episode"
-                                  (car (recursive-assoc
+                                  (car (subsonic-recursive-assoc
                                         data '("subsonic-response"
                                                "podcasts" "channel")))))
          (result (mapcar (lambda (episode)
