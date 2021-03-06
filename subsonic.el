@@ -33,6 +33,7 @@
 (require 'json)
 (require 'url)
 (require 'transient)
+(require 'tq)
 
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
