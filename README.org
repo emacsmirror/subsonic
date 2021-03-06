@@ -13,6 +13,11 @@ server must be ~subsonic~
 
 If you want to set the default volume set ~mpv-default-volume~
 
+** Usage
+Use ~subsonic-artists~ for a browsable list of artists
+
+Use ~subsonic-podcasts~ for a browsable list of podcasts
+
 ** Info
 This uses some code from docker.el for examples of transient and
 tabulated-list-mode as well as the mpv logic from mpv.el
