@@ -226,6 +226,7 @@ EXTRA-QUERY is used for any extra query parameters"
 ;;;
 
 (defun subsonic-albums-parse (data)
+  "Retrieve a list of albums from some parsed json DATA."
   (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
@@ -234,11 +235,13 @@ EXTRA-QUERY is used for any extra query parameters"
     result))
 
 (defun subsonic-albums-refresh (id)
+  "Refresh the albums list for a given artist ID."
   (setq tabulated-list-entries
         (subsonic-albums-parse
          (subsonic-get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
 
 (defun subsonic-open-tracks ()
+  "Open a list of tracks at point."
   (interactive)
   (subsonic-tracks (tabulated-list-get-id)))
 
@@ -247,6 +250,7 @@ EXTRA-QUERY is used for any extra query parameters"
     (define-key map (kbd "RET") 'subsonic-open-tracks) map))
 
 (defun subsonic-albums (id)
+  "Open a buffer of albums for artist ID."
   (let ((new-buff (get-buffer-create "*subsonic-albums*")))
     (set-buffer new-buff)
     (subsonic-album-mode)
@@ -264,10 +268,12 @@ EXTRA-QUERY is used for any extra query parameters"
 ;;; Artists
 ;;;
 (defun subsonic-open-album ()
+  "Open the albums for the artist at point."
   (interactive)
   (subsonic-albums (tabulated-list-get-id)))
 
 (defun subsonic-artists-parse (data)
+  "Retrieve a list of artists from some parsed json DATA."
   (let* ((artists (subsonic-recursive-assoc data '("subsonic-response" "indexes" "index")))
          (result (seq-reduce (lambda (accu artist-index)
                                (append accu (mapcar (lambda (artist)
@@ -277,6 +283,7 @@ EXTRA-QUERY is used for any extra query parameters"
                              artists '()))) result))
 
 (defun subsonic-artists-refresh ()
+  "Refresh the list of subsonic artists."
   (setq tabulated-list-entries
         (subsonic-artists-parse
          (subsonic-get-json (subsonic-build-url "/getIndexes.view" '())))))
@@ -306,6 +313,7 @@ EXTRA-QUERY is used for any extra query parameters"
 ;;; Podcasts
 ;;;
 (defun subsonic-podcasts-parse (data)
+  "Retrieve a list of podcasts from some parsed json DATA."
   (let* ((podcasts (subsonic-recursive-assoc data '("subsonic-response" "podcasts" "channel")))
          (result (mapcar (lambda (channel)
                            (list (assoc-default "id" channel)
@@ -314,11 +322,13 @@ EXTRA-QUERY is used for any extra query parameters"
     result))
 
 (defun subsonic-podcasts-refresh ()
+  "Refresh the list of podcasts."
   (setq tabulated-list-entries
         (subsonic-podcasts-parse
          (subsonic-get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
 
 (defun subsonic-open-podcast-episodes ()
+  "Open a view of podcasts episodes from the podcast at point."
   (interactive)
   (subsonic-podcast-episodes (tabulated-list-get-id)))
 
@@ -348,6 +358,7 @@ EXTRA-QUERY is used for any extra query parameters"
 ;;;
 
 (defun subsonic-podcast-episodes-parse (data)
+  "Retrieve a list of podcast episodes from some parsed json DATA."
   (let* ((episodes (assoc-default "episode"
                                   (car (subsonic-recursive-assoc
                                         data '("subsonic-response"
@@ -361,21 +372,24 @@ EXTRA-QUERY is used for any extra query parameters"
     result))
 
 (defun subsonic-play-podcast ()
+  "Play a podcast episode at point."
   (interactive)
   (subsonic-mpv-start (list (subsonic-build-url "/stream.view" `(("id" . ,(tabulated-list-get-id)))))))
 
 (defun subsonic-podcasts-episode-refresh (id)
+  "Refresh the list of podcast episodes for a podcast ID."
   (setq tabulated-list-entries
         (subsonic-podcast-episodes-parse
          (subsonic-get-json (subsonic-build-url "/getPodcasts.view" `(("id" . ,id)
                                                                       ("includeEpisodes" . "true")))))))
 
 (defun subsonic-download-podcast-episode ()
+  "Tell the subsonic server to download an episode at point."
   (interactive)
   (subsonic-get-json (subsonic-build-url "/downloadPodcastEpisode.view" `(("id" . ,(tabulated-list-get-id))))))
 
 (transient-define-prefix subsonic-podcast-episode-help ()
-  "Help transient for docker images."
+  "Help transient for subsonic podcast episodes."
   ["Subsonic pocast episode help"
    ("d"   "Download"      subsonic-download-podcast-episode)
    ("RET" "Start playing" subsonic-play-podcast)])
@@ -389,6 +403,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 ;;;###autoload
 (defun subsonic-podcast-episodes (id)
+  "Open a buffer with a list of podcast episodes from podcast ID."
   (let ((new-buff (get-buffer-create "*subsonic-podcast-episodes*")))
     (set-buffer new-buff)
     (subsonic-podcast-episodes-mode)
