@@ -1,10 +1,10 @@
-;;; subsonic.el --- browse and play music from subsonic servers with mpv  -*- lexical-binding: t; -*-
+;;; subsonic.el --- Browse and play music from subsonic servers with mpv  -*- lexical-binding: t; -*-
 
 ;; Author: Alex McGrath <amk@amk.ie>
 ;; URL: https://git.sr.ht/~amk/subsonic.el
 ;; Version: 0.1.0
 ;; Keywords: multimedia
-;; Package-Requires: ((emacs "27") (json "1.4") (transient "0.2"))
+;; Package-Requires: ((emacs "27.1") (transient "0.2"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -38,10 +38,10 @@
 ;; and much of the code here :)
 
 (defcustom subsonic-mpv "mpv"
-  "Path to the mpv executable")
+  "Path to the mpv executable.")
 
 (defcustom subsonic-defualt-volume 140
-  "default % volume for mpv to use")
+  "Default  volume for mpv to use.")
 
 (defvar subsonic-mpv--volume subsonic-defualt-volume)
 (defvar subsonic-mpv--process nil)
@@ -66,6 +66,9 @@
   (and subsonic-mpv--process (eq (process-status subsonic-mpv--process) 'run)))
 
 (defun subsonic-mpv-start (args)
+  "Used to start mpv.
+ARGS are any extra arguments to provide to mpv, in
+this case usually track lists"
   (subsonic-mpv-kill)
   (let ((socket (make-temp-name
                  (expand-file-name "subsonic-mpv-" temporary-file-directory))))
@@ -103,6 +106,7 @@
                           (error "Failed to find subsonic auth in .authinfo"))))
 
 (defun subsonic-alist->query (al)
+  "Convert an alist -- AL to a set of url query parameters."
   (seq-reduce
    (lambda (accu q)
      (if (string-empty-p accu)
@@ -110,23 +114,27 @@
        (concat accu "&" (car q) "=" (cdr q))))
    al ""))
 
-(defun get-json (url)
+(defun subsonic-get-json (url)
+  "Return a parsed json respone from URL."
   (condition-case nil
       (let* ((json-array-type 'list)
              (json-key-type 'string))
         (json-read-from-string (with-temp-buffer (url-insert-file-contents url)
                                                  (prog1 (buffer-string)
                                                    (kill-buffer)))))
-    (json-readtable-error (error "could not read \"%s\" as json" body))))
+    (json-readtable-error (error "Could not read \"%s\" as json" body))))
 
 
 (defun subsonic-recursive-assoc (data keys)
+  "Recursivly assoc DATA from a list of KEYS."
   (if keys
       (subsonic-recursive-assoc (assoc-default (car keys) data)
-                       (cdr keys))
+                                (cdr keys))
     data))
 
 (defun subsonic-build-url (endpoint extra-query)
+  "Build a valid subsonic url for a given ENDPOINT.
+EXTRA-QUERY is used for any extra query parameters"
   (concat "https://"
           (plist-get subsonic-auth :host)
           "/rest" endpoint
@@ -140,6 +148,7 @@
 
 ;;;###autoload
 (defun subsonic-toggle-playing ()
+  "Toggle playing/paused state in mpv."
   (interactive)
   (tq-enqueue
    subsonic-mpv--queue
@@ -148,6 +157,7 @@
   t)
 
 (defun subsonic-get-tracklist-id (id)
+  "Get a tracklist for a given ID."
   (reverse (seq-reduce (lambda (accu current)
                          (if (equal (car current) id)
                              (list (car current))
@@ -157,6 +167,7 @@
                        tabulated-list-entries '())))
 
 (defun subsonic-tracks-parse (data)
+  "Parse tracks from json DATA."
   (let* ((tracks (subsonic-recursive-assoc data '("subsonic-response" "directory" "child")))
          (result (mapcar (lambda (track)
                            (let* ((duration (assoc-default "duration" track)))
@@ -168,13 +179,15 @@
     result))
 
 (defun subsonic-tracks-refresh (id)
+  "Refresh the list of subsonic tracks from ID."
   (setq tabulated-list-entries
         (subsonic-tracks-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
+         (subsonic-get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
 
 
 
 (defun subsonic-play-tracks ()
+  "Play all the tracks after the point in the list."
   (interactive)
   (subsonic-mpv-start (mapcar (lambda (id)
                                 (subsonic-build-url "/stream.view" `(("id" . ,id))))
@@ -185,6 +198,7 @@
     (define-key map (kbd "RET") 'subsonic-play-tracks) map))
 
 (defun subsonic-tracks (id)
+  "Create a buffer with a list of tracks from ID."
   (let ((new-buff (get-buffer-create "*subsonic-tracks*")))
     (set-buffer new-buff)
     (subsonic-tracks-mode)
@@ -213,7 +227,7 @@
 (defun subsonic-albums-refresh (id)
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
+         (subsonic-get-json (subsonic-build-url "/getMusicDirectory.view" `(("id" . ,id)))))))
 
 (defun subsonic-open-tracks ()
   (interactive)
@@ -256,7 +270,7 @@
 (defun subsonic-artists-refresh ()
   (setq tabulated-list-entries
         (subsonic-artists-parse
-         (get-json (subsonic-build-url "/getIndexes.view" '())))))
+         (subsonic-get-json (subsonic-build-url "/getIndexes.view" '())))))
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
@@ -293,7 +307,7 @@
 (defun subsonic-podcasts-refresh ()
   (setq tabulated-list-entries
         (subsonic-podcasts-parse
-         (get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
+         (subsonic-get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
 
 (defun subsonic-open-podcast-episodes ()
   (interactive)
@@ -344,12 +358,12 @@
 (defun subsonic-podcasts-episode-refresh (id)
   (setq tabulated-list-entries
         (subsonic-podcast-episodes-parse
-         (get-json (subsonic-build-url "/getPodcasts.view" `(("id" . ,id)
-                                                             ("includeEpisodes" . "true")))))))
+         (subsonic-get-json (subsonic-build-url "/getPodcasts.view" `(("id" . ,id)
+                                                                      ("includeEpisodes" . "true")))))))
 
 (defun subsonic-download-podcast-episode ()
   (interactive)
-  (get-json (subsonic-build-url "/downloadPodcastEpisode.view" `(("id" . ,(tabulated-list-get-id))))))
+  (subsonic-get-json (subsonic-build-url "/downloadPodcastEpisode.view" `(("id" . ,(tabulated-list-get-id))))))
 
 (transient-define-prefix subsonic-podcast-episode-help ()
   "Help transient for docker images."
@@ -379,6 +393,6 @@
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
-(provide 'subsonic-artists)
+(provide 'subsonic)
 
-;;; subsonic-artists.el ends here
+;;; subsonic.el ends here
