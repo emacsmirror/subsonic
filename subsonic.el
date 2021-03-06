@@ -37,11 +37,20 @@
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
 
-(defcustom subsonic-mpv "mpv"
-  "Path to the mpv executable.")
+(defgroup subsonic nil
+  "Customization group for mpv."
+  :prefix "subsonic-"
+  :group 'external)
 
-(defcustom subsonic-defualt-volume 140
-  "Default  volume for mpv to use.")
+(defcustom subsonic-mpv "mpv"
+  "Path to the mpv executable."
+  :type 'string
+  :group 'subsonic)
+
+(defcustom subsonic-defualt-volume 100
+  "Default  volume for mpv to use."
+  :type 'int
+  :group 'subsonic)
 
 (defvar subsonic-mpv--volume subsonic-defualt-volume)
 (defvar subsonic-mpv--process nil)
@@ -97,7 +106,7 @@ this case usually track lists"
                                                      :service socket)))
     (set-process-filter
      (tq-process subsonic-mpv--queue)
-     (lambda (_proc string)))
+     (lambda (_proc _string)))
     t))
 
 (defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
@@ -122,7 +131,7 @@ this case usually track lists"
         (json-read-from-string (with-temp-buffer (url-insert-file-contents url)
                                                  (prog1 (buffer-string)
                                                    (kill-buffer)))))
-    (json-readtable-error (error "Could not read \"%s\" as json" body))))
+    (json-readtable-error (error "Failed to read json"))))
 
 
 (defun subsonic-recursive-assoc (data keys)
@@ -153,7 +162,7 @@ EXTRA-QUERY is used for any extra query parameters"
   (tq-enqueue
    subsonic-mpv--queue
    (concat (json-serialize (list 'command  ["cycle" "pause"])) "\n")
-   "" nil (lambda (x y)))
+   "" nil (lambda (_x _y)))
   t)
 
 (defun subsonic-get-tracklist-id (id)
