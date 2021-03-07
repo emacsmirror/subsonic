@@ -235,11 +235,28 @@ EXTRA-QUERY is used for any extra query parameters"
                          albums)))
     result))
 
+(defun subsonic-albums-type-parse (data)
+  "Retrieve a list of albums from some parsed json DATA."
+  (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "albumList2" "album")))
+         (result (mapcar (lambda (album)
+                           (list (assoc-default "id" album)
+                                 (vector (assoc-default "name" album)
+                                         (assoc-default "artist" album))))
+                         albums)))
+    result))
+
 (defun subsonic-albums-refresh (id)
   "Refresh the albums list for a given artist ID."
   (setq tabulated-list-entries
         (subsonic-albums-parse
          (subsonic-get-json (subsonic-build-url "/getArtist.view" `(("id" . ,id)))))))
+
+(defun subsonic-albums-refresh-type (type)
+  "Refresh the albums list for a given albumlist TYPE."
+  (setq tabulated-list-entries
+        (subsonic-albums-type-parse
+         (subsonic-get-json (subsonic-build-url "/getAlbumList2.view" `(("type" . ,type)
+                                                                        ("size" . "50")))))))
 
 (defun subsonic-open-tracks ()
   "Open a list of tracks at point."
@@ -250,14 +267,41 @@ EXTRA-QUERY is used for any extra query parameters"
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'subsonic-open-tracks) map))
 
-(defun subsonic-albums (id)
-  "Open a buffer of albums for artist ID."
+(defvar subsonic-album-type-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'subsonic-open-tracks) map))
+
+(defun subsonic-recent-albums ()
+  "Show a list of recently played subsonic albums."
+  (interactive)
+  (subsonic-albums nil "recent"))
+
+(defun subsonic-random-albums ()
+  "Show a list of random subsonic albums."
+  (interactive)
+  (subsonic-albums nil "random"))
+
+(defun subsonic-newest-albums ()
+  "Show a list of recently added subsonic albums."
+  (interactive)
+  (subsonic-albums nil "newest"))
+
+(defun subsonic-albums (&optional id type)
+  "Open a buffer of albums for artist ID or list TYPE."
   (let ((new-buff (get-buffer-create "*subsonic-albums*")))
     (set-buffer new-buff)
-    (subsonic-album-mode)
-    (subsonic-albums-refresh id)
+    (cond (id (subsonic-album-mode)
+              (subsonic-albums-refresh id))
+          (type (subsonic-album-type-mode)
+                (subsonic-albums-refresh-type type)))
     (tabulated-list-revert)
     (pop-to-buffer-same-window (current-buffer))))
+
+(define-derived-mode subsonic-album-type-mode tabulated-list-mode
+  "Subsonic Album List"
+  (setq tabulated-list-format [("Albums" 30 t) ("Artists" 30 t)])
+  (setq tabulated-list-padding 2)
+  (tabulated-list-init-header))
 
 (define-derived-mode subsonic-album-mode tabulated-list-mode
   "Subsonic Albums"
