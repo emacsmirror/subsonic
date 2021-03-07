@@ -43,7 +43,7 @@
   :prefix "subsonic-"
   :group 'external)
 
-(defcustom subsonic-mpv "mpv"
+(defcustom subsonic-mpv (executable-find "mpv")
   "Path to the mpv executable."
   :type 'string
   :group 'subsonic)
@@ -111,9 +111,8 @@ this case usually track lists"
     t))
 
 (defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
-                        (if auth
-                            (car auth)
-                          (error "Failed to find subsonic auth in .authinfo"))))
+                        (when auth
+                          (car auth))))
 
 (defun subsonic-alist->query (al)
   "Convert an alist -- AL to a set of url query parameters."
@@ -145,15 +144,17 @@ this case usually track lists"
 (defun subsonic-build-url (endpoint extra-query)
   "Build a valid subsonic url for a given ENDPOINT.
 EXTRA-QUERY is used for any extra query parameters"
-  (concat "https://"
-          (plist-get subsonic-auth :host)
-          "/rest" endpoint
-          (subsonic-alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
-                                           ("p" . ,(funcall (plist-get subsonic-auth :secret)))
-                                           ("c" . "ElSonic")
-                                           ("v" . "1.16.0")
-                                           ("f" . "json"))
-                                         extra-query))))
+  (if subsonic-auth
+      (concat "https://"
+              (plist-get subsonic-auth :host)
+              "/rest" endpoint
+              (subsonic-alist->query (append `(("u" . ,(plist-get subsonic-auth :user))
+                                               ("p" . ,(funcall (plist-get subsonic-auth :secret)))
+                                               ("c" . "ElSonic")
+                                               ("v" . "1.16.0")
+                                               ("f" . "json"))
+                                             extra-query)))
+    (error "Failed to load .authinfo, please provide auth configuration for subsonic")))
 
 
 ;;;###autoload
@@ -205,7 +206,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defvar subsonic-tracks-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-play-tracks) map))
+    (define-key map (kbd "RET") #'subsonic-play-tracks) map))
 
 (defun subsonic-tracks (id)
   "Create a buffer with a list of tracks from ID."
@@ -231,7 +232,8 @@ EXTRA-QUERY is used for any extra query parameters"
   (let* ((albums (subsonic-recursive-assoc data '("subsonic-response" "artist" "album")))
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
-                                 (vector (assoc-default "name" album))))
+                                 (vector (format "%d" (assoc-default "year" album))
+                                         (assoc-default "name" album))))
                          albums)))
     result))
 
@@ -265,11 +267,11 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defvar subsonic-album-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-tracks) map))
+    (define-key map (kbd "RET") #'subsonic-open-tracks) map))
 
 (defvar subsonic-album-type-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-tracks) map))
+    (define-key map (kbd "RET") #'subsonic-open-tracks) map))
 
 (defun subsonic-recent-albums ()
   "Show a list of recently played subsonic albums."
@@ -305,7 +307,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (define-derived-mode subsonic-album-mode tabulated-list-mode
   "Subsonic Albums"
-  (setq tabulated-list-format [("Albums" 30 t)])
+  (setq tabulated-list-format [("Year" 10 t) ("Albums" 30 t)])
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
@@ -335,7 +337,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defvar subsonic-artist-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-album) map))
+    (define-key map (kbd "RET") #'subsonic-open-album) map))
 
 ;;;###autoload
 (defun subsonic-artists ()
@@ -351,7 +353,7 @@ EXTRA-QUERY is used for any extra query parameters"
   "Subsonic Artists"
   (setq tabulated-list-format [("Artist" 30 t)])
   (setq tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook 'subsonic-artists-refresh nil t)
+  (add-hook 'tabulated-list-revert-hook #'subsonic-artists-refresh nil t)
   (tabulated-list-init-header))
 
 ;;;
@@ -379,7 +381,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defvar subsonic-podcast-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'subsonic-open-podcast-episodes) map))
+    (define-key map (kbd "RET") #'subsonic-open-podcast-episodes) map))
 
 ;;;###autoload
 (defun subsonic-podcasts ()
@@ -395,7 +397,7 @@ EXTRA-QUERY is used for any extra query parameters"
   "Subsonic Podcasts"
   (setq tabulated-list-format [("Podcasts" 30 t)])
   (setq tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook 'subsonic-podcasts-refresh nil t)
+  (add-hook 'tabulated-list-revert-hook #'subsonic-podcasts-refresh nil t)
   (tabulated-list-init-header))
 
 ;;;
@@ -442,9 +444,9 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (defvar subsonic-podcast-episodes-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "?") 'subsonic-podcast-episode-help)
-    (define-key map (kbd "RET") 'subsonic-play-podcast)
-    (define-key map (kbd "d") 'subsonic-download-podcast-episode) map))
+    (define-key map (kbd "?") #'subsonic-podcast-episode-help)
+    (define-key map (kbd "RET") #'subsonic-play-podcast)
+    (define-key map (kbd "d") #'subsonic-download-podcast-episode) map))
 
 ;;;###autoload
 (defun subsonic-podcast-episodes (id)
