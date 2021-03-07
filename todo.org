@@ -1,10 +1,4 @@
-* Subsonic support
- - Support directory browsing properly rather than hard coding
-   Artist/Album/Track order
- - alternatively use the tag browsing api
-
 * Music playing
- - setup using the mpv json ipc for music playing
  - Use the mpv socket to support
    - playlist adding/creating
    - play/pause/skip
@@ -12,4 +6,4 @@
  - support lastfm scrobbling
 
 * Podcast Support
- - Add transient menus for downloading/adding podcasts
+ - Add transient menus for adding podcasts
