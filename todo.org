@@ -1,7 +1,7 @@
 * Music playing
  - Use the mpv socket to support
    - playlist adding/creating
-   - play/pause/skip
+   - skip tracks
    - watch for finish
  - support lastfm scrobbling
 
