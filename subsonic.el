@@ -32,8 +32,9 @@
 ;;; Code:
 (require 'json)
 (require 'url)
-(require 'transient)
 (require 'tq)
+
+(require 'transient)
 
 ;; Credit & thanks to the mpv.el and docker-mode projects for examples
 ;; and much of the code here :)
@@ -379,9 +380,23 @@ EXTRA-QUERY is used for any extra query parameters"
   (interactive)
   (subsonic-podcast-episodes (tabulated-list-get-id)))
 
+(defun subsonic-add-podcast ()
+  (interactive)
+  (subsonic-get-json (subsonic-build-url "/createPodcastChannel.view"
+                                         `(("url" . ,(url-hexify-string
+                                                      (read-string "feed url: ")))))))
+
+(transient-define-prefix subsonic-podcast-help ()
+  "Help transient for subsonic podcast episodes."
+  ["Subsonic pocast episode help"
+   ("a"   "Add a podcast"      subsonic-add-podcast)
+   ("RET" "Open a podcast"     subsonic-open-podcast-episodes)])
+
 (defvar subsonic-podcast-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") #'subsonic-open-podcast-episodes) map))
+    (define-key map (kbd "RET") #'subsonic-open-podcast-episodes)
+    (define-key map (kbd "?") #'subsonic-podcast-help)
+    (define-key map (kbd "a") #'subsonic-add-podcast) map))
 
 ;;;###autoload
 (defun subsonic-podcasts ()
