@@ -168,6 +168,73 @@ EXTRA-QUERY is used for any extra query parameters"
    "" nil (lambda (_x _y)))
   t)
 
+;;;
+;;; Search
+;;;
+(defun subsonic-search-parse (data)
+  "Retrieve a list of search results from some parsed json DATA."
+  (let* ((search-results (subsonic-recursive-assoc data '("subsonic-response" "searchResult3")))
+         (result (append (mapcar (lambda (artist)
+                                   (list `(,(assoc-default "id" artist) . "artist")
+                                         (vector "Artist"
+                                                 (assoc-default "name" artist))))
+                                 (assoc-default "artist" search-results))
+                         (mapcar (lambda (album)
+                                   (list `(,(assoc-default "id" album) . "album")
+                                         (vector "Album"
+                                                 (assoc-default "name" album))))
+                                 (assoc-default "album" search-results))
+                         (mapcar (lambda (song)
+                                   (list `(,(assoc-default "id" song) . "song")
+                                         (vector "Song"
+                                                 (assoc-default "title" song))))
+                                 (assoc-default "song" search-results)))))
+    result))
+
+(defun subsonic-search-refresh (query)
+  "Refresh the list of search results."
+  (setq tabulated-list-entries
+        (subsonic-search-parse (subsonic-get-json (subsonic-build-url "/search3.view" `(("query" . ,query)))))))
+
+(defun subsonic-open-search-appropriate-result (result)
+  (let ((type (cdr result)))
+    (cond ((string-equal type "artist") (subsonic-albums (car result)))
+          ((string-equal type "album")  (subsonic-tracks (car result)))
+          ((string-equal type "song")  (subsonic-mpv-start (list (subsonic-build-url "/stream.view" `(("id" . ,(car result))))))))))
+
+(defun subsonic-open-search-result ()
+  "Open a view of the result from the result at point."
+  (interactive)
+  (subsonic-open-search-appropriate-result (tabulated-list-get-id)))
+
+(defvar subsonic-search-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'subsonic-open-search-result ) map))
+
+;;;###autoload
+(defun subsonic-search ()
+  "List subsonic search results."
+  (interactive)
+  (let ((new-buff (get-buffer-create "*subsonic-search*")))
+    (set-buffer new-buff)
+    (setq buffer-read-only t)
+    (subsonic-search-mode)
+    (pop-to-buffer (current-buffer))))
+
+(define-derived-mode subsonic-search-mode tabulated-list-mode
+  "Subsonic search mode"
+  ;;  type: artist|album|track
+  (setq tabulated-list-format [("Type" 10 t) ("Name" 30 t)])
+  (setq tabulated-list-padding 2)
+  (subsonic-search-refresh (url-hexify-string (read-string "Query: ")))
+  (tabulated-list-revert)
+  (tabulated-list-init-header))
+
+
+;;;
+;;; Tracks
+;;;
+
 (defun subsonic-get-tracklist-id (id)
   "Get a tracklist for a given ID."
   (reverse (seq-reduce (lambda (accu current)
@@ -464,7 +531,6 @@ EXTRA-QUERY is used for any extra query parameters"
     (define-key map (kbd "RET") #'subsonic-play-podcast)
     (define-key map (kbd "d") #'subsonic-download-podcast-episode) map))
 
-;;;###autoload
 (defun subsonic-podcast-episodes (id)
   "Open a buffer with a list of podcast episodes from podcast ID."
   (let ((new-buff (get-buffer-create "*subsonic-podcast-episodes*")))
