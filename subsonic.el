@@ -381,6 +381,7 @@ EXTRA-QUERY is used for any extra query parameters"
   (subsonic-podcast-episodes (tabulated-list-get-id)))
 
 (defun subsonic-add-podcast ()
+  "Add a new subsonic podcast."
   (interactive)
   (subsonic-get-json (subsonic-build-url "/createPodcastChannel.view"
                                          `(("url" . ,(url-hexify-string
