@@ -554,6 +554,7 @@ EXTRA-QUERY is used for any extra query parameters"
    ("a" "Artists"        subsonic-artists)
    ("r" "Random Albums"  subsonic-random-albums)
    ("n" "Newest Albums"  subsonic-newest-albums)
+   ("s" "Search subsonic" subsonic-search)
    ("t" "Toggle playing" subsonic-toggle-playing)])
 
 (provide 'subsonic)
