@@ -14,10 +14,22 @@ server must be `subsonic`
 If you want to set the default volume set `mpv-default-volume`
 
 ## Usage
+The package isnt on melpa yet so it must be added to load-path for usage
 
-Use `subsonic-artists` for a browsable list of artists
+Example use-package config:
+```
+(use-package subsonic
+  :load-path "subsonic.el/"
+  :commands subsonic
+  :bind (("C-c m" . subsonic))
+  :custom
+  (subsonic-enable-art t))
+```
 
-Use `subsonic-podcasts` for a browsable list of podcasts
+Use the `subsonic` command to open a transiente with commonly used
+commands available
+
+set `subsonic-enable-art` to `t` to enable album art.
 
 ## Info
 
