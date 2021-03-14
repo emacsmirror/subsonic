@@ -33,6 +33,7 @@
 (require 'json)
 (require 'url)
 (require 'tq)
+(require 'seq)
 
 (require 'transient)
 
@@ -51,7 +52,17 @@
 
 (defcustom subsonic-defualt-volume 100
   "Default  volume for mpv to use."
-  :type 'int
+  :type 'integer
+  :group 'subsonic)
+
+(defcustom subsonic-enable-art nil
+  "Enable displaying album art in supported frames."
+  :type 'boolean
+  :group 'subsonic)
+
+(defcustom subsonic-art-cache-path (expand-file-name "subsonic-cache" user-emacs-directory)
+  "Path to store cached subsonic art."
+  :type 'string
   :group 'subsonic)
 
 (defvar subsonic-mpv--volume subsonic-defualt-volume)
@@ -134,6 +145,31 @@ this case usually track lists"
                                                    (kill-buffer)))))
     (json-readtable-error (error "Failed to read json"))))
 
+(defun subsonic-get-image (id vec n buff)
+  "Update a tablist VEC entry with an image from ID.
+BUFF is used to specify the buffer that will be
+reverted upon image load and N specifies the index"
+  (if (or (not subsonic-enable-art)
+          (not (display-graphic-p)))
+      (aset vec n "")
+    (when (not (file-exists-p subsonic-art-cache-path))
+      (mkdir subsonic-art-cache-path))
+    (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
+        (aset vec n (propertize " " 'display
+                                (create-image
+                                 (expand-file-name id subsonic-art-cache-path)
+                                 nil nil :height 100 :scale t)))
+      (url-retrieve (subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))
+                    (lambda (_status)
+                      (write-region (+ url-http-end-of-headers 1) (point-max)
+                                    (expand-file-name id subsonic-art-cache-path))
+                      (aset vec n (propertize " " 'display
+                                              (create-image
+                                               (expand-file-name id subsonic-art-cache-path)
+                                               nil nil :height 100 :scale t)))
+                      (set-buffer buff)
+                      (when (derived-mode-p 'tabulated-list-mode)
+                        (tabulated-list-revert)))))))
 
 (defun subsonic-recursive-assoc (data keys)
   "Recursivly assoc DATA from a list of KEYS."
@@ -192,11 +228,12 @@ EXTRA-QUERY is used for any extra query parameters"
     result))
 
 (defun subsonic-search-refresh (query)
-  "Refresh the list of search results."
+  "Refresh the list of search results from QUERY."
   (setq tabulated-list-entries
         (subsonic-search-parse (subsonic-get-json (subsonic-build-url "/search3.view" `(("query" . ,query)))))))
 
 (defun subsonic-open-search-appropriate-result (result)
+  "Opens the RESULT from a search in hte appropriate buffer."
   (let ((type (cdr result)))
     (cond ((string-equal type "artist") (subsonic-albums (car result)))
           ((string-equal type "album")  (subsonic-tracks (car result)))
@@ -301,7 +338,8 @@ EXTRA-QUERY is used for any extra query parameters"
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
                                  (vector (format "%d" (assoc-default "year" album))
-                                         (assoc-default "name" album))))
+                                         (assoc-default "name" album)
+                                         "")))
                          albums)))
     result))
 
@@ -311,7 +349,8 @@ EXTRA-QUERY is used for any extra query parameters"
          (result (mapcar (lambda (album)
                            (list (assoc-default "id" album)
                                  (vector (assoc-default "name" album)
-                                         (assoc-default "artist" album))))
+                                         (assoc-default "artist" album)
+                                         "")))
                          albums)))
     result))
 
@@ -319,14 +358,19 @@ EXTRA-QUERY is used for any extra query parameters"
   "Refresh the albums list for a given artist ID."
   (setq tabulated-list-entries
         (subsonic-albums-parse
-         (subsonic-get-json (subsonic-build-url "/getArtist.view" `(("id" . ,id)))))))
+         (subsonic-get-json (subsonic-build-url "/getArtist.view" `(("id" . ,id))))))
+  (dolist (entry tabulated-list-entries)
+    (subsonic-get-image (car entry) (nth 1 entry) 2 (current-buffer))))
+
 
 (defun subsonic-albums-refresh-type (type)
   "Refresh the albums list for a given albumlist TYPE."
   (setq tabulated-list-entries
         (subsonic-albums-type-parse
          (subsonic-get-json (subsonic-build-url "/getAlbumList2.view" `(("type" . ,type)
-                                                                        ("size" . "50")))))))
+                                                                        ("size" . "50"))))))
+  (dolist (entry tabulated-list-entries)
+    (subsonic-get-image (car entry) (nth 1 entry) 2 (current-buffer))))
 
 (defun subsonic-open-tracks ()
   "Open a list of tracks at point."
@@ -369,13 +413,13 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (define-derived-mode subsonic-album-type-mode tabulated-list-mode
   "Subsonic Album List"
-  (setq tabulated-list-format [("Albums" 30 t) ("Artists" 30 t)])
+  (setq tabulated-list-format [("Albums" 30 t) ("Artists" 30 t) ("Art" 30 nil)])
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
 (define-derived-mode subsonic-album-mode tabulated-list-mode
   "Subsonic Albums"
-  (setq tabulated-list-format [("Year" 10 t) ("Albums" 30 t)])
+  (setq tabulated-list-format [("Year" 5 t) ("Albums" 40 t) ("Art" 30 nil)])
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
@@ -432,7 +476,8 @@ EXTRA-QUERY is used for any extra query parameters"
   (let* ((podcasts (subsonic-recursive-assoc data '("subsonic-response" "podcasts" "channel")))
          (result (mapcar (lambda (channel)
                            (list (assoc-default "id" channel)
-                                 (vector (assoc-default "title" channel))))
+                                 (vector (assoc-default "title" channel)
+                                         "")))
                          podcasts)))
     result))
 
@@ -440,7 +485,10 @@ EXTRA-QUERY is used for any extra query parameters"
   "Refresh the list of podcasts."
   (setq tabulated-list-entries
         (subsonic-podcasts-parse
-         (subsonic-get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false")))))))
+         (subsonic-get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false"))))))
+  (dolist (entry tabulated-list-entries)
+    (subsonic-get-image (car entry) (nth 1 entry) 1 (current-buffer))))
+
 
 (defun subsonic-open-podcast-episodes ()
   "Open a view of podcasts episodes from the podcast at point."
@@ -478,7 +526,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (define-derived-mode subsonic-podcast-mode tabulated-list-mode
   "Subsonic Podcasts"
-  (setq tabulated-list-format [("Podcasts" 30 t)])
+  (setq tabulated-list-format [("Podcasts" 30 t) ("Art" 20 nil)])
   (setq tabulated-list-padding 2)
   (add-hook 'tabulated-list-revert-hook #'subsonic-podcasts-refresh nil t)
   (tabulated-list-init-header))
