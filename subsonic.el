@@ -145,6 +145,9 @@ this case usually track lists"
                                                    (kill-buffer)))))
     (json-readtable-error (error "Failed to read json"))))
 
+;; fix byte-compiler complaints
+(defvar url-http-end-of-headers)
+
 (defun subsonic-get-image (id vec n buff)
   "Update a tablist VEC entry with an image from ID.
 BUFF is used to specify the buffer that will be
