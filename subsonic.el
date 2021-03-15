@@ -148,6 +148,12 @@ this case usually track lists"
 ;; fix byte-compiler complaints
 (defvar url-http-end-of-headers)
 
+(defun subsonic-image-propertize (id)
+  (propertize " " 'display
+              (create-image
+               (expand-file-name id subsonic-art-cache-path)
+               nil nil :height 100)))
+
 (defun subsonic-get-image (id vec n buff)
   "Update a tablist VEC entry with an image from ID.
 BUFF is used to specify the buffer that will be
@@ -158,18 +164,12 @@ reverted upon image load and N specifies the index"
     (when (not (file-exists-p subsonic-art-cache-path))
       (mkdir subsonic-art-cache-path))
     (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
-        (aset vec n (propertize " " 'display
-                                (create-image
-                                 (expand-file-name id subsonic-art-cache-path)
-                                 nil nil :height 100 :scale t)))
+        (aset vec n (subsonic-image-propertize id))
       (url-retrieve (subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))
                     (lambda (_status)
                       (write-region (+ url-http-end-of-headers 1) (point-max)
                                     (expand-file-name id subsonic-art-cache-path))
-                      (aset vec n (propertize " " 'display
-                                              (create-image
-                                               (expand-file-name id subsonic-art-cache-path)
-                                               nil nil :height 100 :scale t)))
+                      (aset vec n (subsonic-image-propertize id))
                       (set-buffer buff)
                       (when (derived-mode-p 'tabulated-list-mode)
                         (tabulated-list-revert)))))))
