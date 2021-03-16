@@ -506,8 +506,8 @@ EXTRA-QUERY is used for any extra query parameters"
                                                       (read-string "feed url: ")))))))
 
 (transient-define-prefix subsonic-podcast-help ()
-  "Help transient for subsonic podcast episodes."
-  ["Subsonic pocast episode help"
+  "Help transient for subsonic podcasts."
+  ["Subsonic podcast help"
    ("a"   "Add a podcast"      subsonic-add-podcast)
    ("RET" "Open a podcast"     subsonic-open-podcast-episodes)])
 
@@ -571,7 +571,7 @@ EXTRA-QUERY is used for any extra query parameters"
 
 (transient-define-prefix subsonic-podcast-episode-help ()
   "Help transient for subsonic podcast episodes."
-  ["Subsonic pocast episode help"
+  ["Subsonic podcast episode help"
    ("d"   "Download"      subsonic-download-podcast-episode)
    ("RET" "Start playing" subsonic-play-podcast)])
 
@@ -600,7 +600,7 @@ EXTRA-QUERY is used for any extra query parameters"
 ;;;###autoload
 (transient-define-prefix subsonic ()
   "Help transient for subsonic podcast episodes."
-  ["Subsonic pocast episode help"
+  ["Subsonic"
    ("p" "Podcasts"       subsonic-podcasts)
    ("a" "Artists"        subsonic-artists)
    ("r" "Random Albums"  subsonic-random-albums)
