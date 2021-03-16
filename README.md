@@ -25,12 +25,11 @@ Example use-package config:
   (subsonic-enable-art t))
 ```
 
-Use the `subsonic` command to open a transiente with commonly used
+Use the `subsonic` command to open a transient with commonly used
 commands available
 
-Set `subsonic-enable-art` to `t` to enable album art.
-The default mpv volume can be set with `mpv-default-volume`
-
+- `subsonic-enable-art` to `t` to enable album art
+- `subsonic-mpv-default-volume` to set default mpv volume
 
 ## Info
 
