@@ -197,15 +197,32 @@ EXTRA-QUERY is used for any extra query parameters"
                                              extra-query)))
     (error "Failed to load .authinfo, please provide auth configuration for subsonic")))
 
+(defun subsonic-mpv-command (&rest args)
+  "Generate a mpv ipc command using ARGS."
+  (tq-enqueue
+   subsonic-mpv--queue
+   (concat (json-serialize (list 'command (apply #'vector args))) "\n")
+   "" nil (lambda (_x _y))))
 
 ;;;###autoload
 (defun subsonic-toggle-playing ()
   "Toggle playing/paused state in mpv."
   (interactive)
-  (tq-enqueue
-   subsonic-mpv--queue
-   (concat (json-serialize (list 'command  ["cycle" "pause"])) "\n")
-   "" nil (lambda (_x _y)))
+  (subsonic-mpv-command "cycle" "pause")
+  t)
+
+;;;###autoload
+(defun subsonic-skip-track ()
+  "Toggle playing/paused state in mpv."
+  (interactive)
+  (subsonic-mpv-command "playlist-next")
+  t)
+
+;;;###autoload
+(defun subsonic-prev-track ()
+  "Toggle playing/paused state in mpv."
+  (interactive)
+  (subsonic-mpv-command "playlist-prev")
   t)
 
 ;;;
@@ -606,8 +623,11 @@ EXTRA-QUERY is used for any extra query parameters"
    ("a" "Artists"        subsonic-artists)
    ("r" "Random Albums"  subsonic-random-albums)
    ("n" "Newest Albums"  subsonic-newest-albums)
-   ("s" "Search subsonic" subsonic-search)
-   ("t" "Toggle playing" subsonic-toggle-playing)])
+   ("s" "Search subsonic" subsonic-search)]
+  ["Controls"
+   ("t" "Toggle playing" subsonic-toggle-playing)
+   ("f" "Skip track" subsonic-skip-track)
+   ("b" "Previous track" subsonic-prev-track)])
 
 (provide 'subsonic)
 
