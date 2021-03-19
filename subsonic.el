@@ -149,6 +149,7 @@ this case usually track lists"
 (defvar url-http-end-of-headers)
 
 (defun subsonic-image-propertize (id)
+  "Generate a property for a subsonic ID."
   (propertize " " 'display
               (create-image
                (expand-file-name id subsonic-art-cache-path)
