@@ -480,6 +480,7 @@ EXTRA-QUERY is used for any extra query parameters"
     (set-buffer new-buff)
     (setq buffer-read-only t)
     (subsonic-artist-mode)
+    (tabulated-list-revert)
     (pop-to-buffer (current-buffer))))
 
 (define-derived-mode subsonic-artist-mode tabulated-list-mode
@@ -537,12 +538,13 @@ EXTRA-QUERY is used for any extra query parameters"
 
 ;;;###autoload
 (defun subsonic-podcasts ()
-  "List subsonic artists."
+  "List subsonic podcasts."
   (interactive)
   (let ((new-buff (get-buffer-create "*subsonic-podcasts*")))
     (set-buffer new-buff)
     (setq buffer-read-only t)
     (subsonic-podcast-mode)
+    (tabulated-list-revert)
     (pop-to-buffer (current-buffer))))
 
 (define-derived-mode subsonic-podcast-mode tabulated-list-mode
