@@ -6,19 +6,18 @@ This is a subsonic client for emacs using mpv for music playing.
 
 Add a `~/.authinfo.gpg` or `~/.authinfo` file with the following contents
     
-    machine SUBSONIC_URL login USERNAME password PASSSWORD port subsonic
+    machine SUBSONIC_URL login USERNAME password PASSWORD port subsonic
     
 
 The `port` section here is used to identify the line as a subsonic
 server must be `subsonic`
 
 ## Usage
-The package isnt on melpa yet so it must be added to load-path for usage
+The package is available on melpa as `subsonic`
 
 Example use-package config:
 ```
 (use-package subsonic
-  :load-path "subsonic.el/" ;; in .emacs.d/subsonic.el
   :commands subsonic
   :bind (("C-c m" . subsonic))
   :custom
@@ -38,6 +37,14 @@ tabulated-list-mode as well as the mpv logic from mpv.el
 
 This has only been tested with gonic however it should function with
 other servers
+
+## Contributing/Issues
+
+Please send any patches or share any issues you may have on the mailing list here:
+https://lists.sr.ht/~amk/public-inbox
+
+Perfer sending mail to the mailinglist before opening at todo ticket --
+https://todo.sr.ht/~amk/subsonic.el
 
 ## Screenshots
 ![album list view](https://git.sr.ht/~amk/subsonic.el/blob/master/images/artist.png)
