@@ -1,5 +1,7 @@
 # subsonic.el
 
+[![MELPA](https://melpa.org/packages/subsonic-badge.svg)](https://melpa.org/#/subsonic)
+
 This is a subsonic client for emacs using mpv for music playing.
 
 ## Setup
