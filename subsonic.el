@@ -615,9 +615,9 @@ EXTRA-QUERY is used for any extra query parameters"
   (setq tabulated-list-padding 2)
   (tabulated-list-init-header))
 
-;;;###autoload
+;;;###autoload (autoload 'subsonic "subsonic" nil t)
 (transient-define-prefix subsonic ()
-  "Help transient for subsonic podcast episodes."
+  "Help transient for subsonic."
   ["Subsonic"
    ("p" "Podcasts"       subsonic-podcasts)
    ("a" "Artists"        subsonic-artists)
