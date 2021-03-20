@@ -25,7 +25,7 @@
 ;; uses mpv for playing the actual music.  Use a ~/.authinfo.gpg file with
 ;; contents like the following to setup auth
 ;;
-;; machine SUBSONIC_URL login USERNAME password PASSSWORD port subsonic
+;; machine SUBSONIC_URL login USERNAME password PASSWORD port subsonic
 ;;
 ;; port is required to be 'subsonic' for this to work
 
@@ -136,7 +136,7 @@ this case usually track lists"
    al ""))
 
 (defun subsonic-get-json (url)
-  "Return a parsed json respone from URL."
+  "Return a parsed json response from URL."
   (condition-case nil
       (let* ((json-array-type 'list)
              (json-key-type 'string))
@@ -208,22 +208,19 @@ EXTRA-QUERY is used for any extra query parameters"
 (defun subsonic-toggle-playing ()
   "Toggle playing/paused state in mpv."
   (interactive)
-  (subsonic-mpv-command "cycle" "pause")
-  t)
+  (subsonic-mpv-command "cycle" "pause"))
 
 ;;;###autoload
 (defun subsonic-skip-track ()
   "Toggle playing/paused state in mpv."
   (interactive)
-  (subsonic-mpv-command "playlist-next")
-  t)
+  (subsonic-mpv-command "playlist-next"))
 
 ;;;###autoload
 (defun subsonic-prev-track ()
   "Toggle playing/paused state in mpv."
   (interactive)
-  (subsonic-mpv-command "playlist-prev")
-  t)
+  (subsonic-mpv-command "playlist-prev"))
 
 ;;;
 ;;; Search
@@ -254,7 +251,7 @@ EXTRA-QUERY is used for any extra query parameters"
         (subsonic-search-parse (subsonic-get-json (subsonic-build-url "/search3.view" `(("query" . ,query)))))))
 
 (defun subsonic-open-search-appropriate-result (result)
-  "Opens the RESULT from a search in hte appropriate buffer."
+  "Opens the RESULT from a search in the appropriate buffer."
   (let ((type (cdr result)))
     (cond ((string-equal type "artist") (subsonic-albums (car result)))
           ((string-equal type "album")  (subsonic-tracks (car result)))
