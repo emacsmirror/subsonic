@@ -45,7 +45,7 @@ other servers
 Please send any patches or share any issues you may have on the mailing list here:
 https://lists.sr.ht/~amk/public-inbox
 
-Perfer sending mail to the mailinglist before opening at todo ticket --
+Prefer sending mail to the mailing list before opening at TODO ticket --
 https://todo.sr.ht/~amk/subsonic.el
 
 ## Screenshots

@@ -176,7 +176,7 @@ reverted upon image load and N specifies the index"
                         (tabulated-list-revert)))))))
 
 (defun subsonic-recursive-assoc (data keys)
-  "Recursivly assoc DATA from a list of KEYS."
+  "Recursively assoc DATA from a list of KEYS."
   (if keys
       (subsonic-recursive-assoc (assoc-default (car keys) data)
                                 (cdr keys))
