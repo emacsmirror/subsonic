@@ -50,7 +50,7 @@
   :type 'string
   :group 'subsonic)
 
-(defcustom subsonic-defualt-volume 100
+(defcustom subsonic-default-volume 100
   "Default  volume for mpv to use."
   :type 'integer
   :group 'subsonic)
@@ -65,7 +65,7 @@
   :type 'string
   :group 'subsonic)
 
-(defvar subsonic-mpv--volume subsonic-defualt-volume)
+(defvar subsonic-mpv--volume subsonic-default-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
 
