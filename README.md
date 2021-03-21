@@ -7,17 +7,18 @@ This is a subsonic client for emacs using mpv for music playing.
 ## Setup
 
 Add a `~/.authinfo.gpg` or `~/.authinfo` file with the following contents
-    
+
     machine SUBSONIC_URL login USERNAME password PASSWORD port subsonic
-    
 
 The `port` section here is used to identify the line as a subsonic
 server must be `subsonic`
 
 ## Usage
+
 The package is available on melpa as `subsonic`
 
 Example use-package config:
+
 ```
 (use-package subsonic
   :commands subsonic
@@ -45,9 +46,10 @@ other servers
 Please send any patches or share any issues you may have on the mailing list here:
 https://lists.sr.ht/~amk/public-inbox
 
-Prefer sending mail to the mailing list before opening at TODO ticket --
+Prefer sending mail to the mailing list before opening a TODO ticket --
 https://todo.sr.ht/~amk/subsonic.el
 
 ## Screenshots
+
 ![album list view](https://git.sr.ht/~amk/subsonic.el/blob/master/images/artist.png)
 ![podcasts view](https://git.sr.ht/~amk/subsonic.el/blob/master/images/podcasts.png)
