@@ -97,7 +97,8 @@ this case usually track lists"
     (setq subsonic-mpv--process (apply #'start-process
                                        (append
                                         (list "mpv-player" nil subsonic-mpv
-                                              "--no-terminal"
+                                              ;; "--no-terminal" leave this out, breaks on debian?
+                                              "--really-quiet"
                                               "--no-video"
                                               (format "--volume=%d" subsonic-mpv--volume)
                                               (concat "--input-ipc-server=" socket))
