@@ -25,9 +25,7 @@
 ;; uses mpv for playing the actual music.  Use a ~/.authinfo.gpg file with
 ;; contents like the following to setup auth
 ;;
-;; machine SUBSONIC_URL login USERNAME password PASSWORD port subsonic
-;;
-;; port is required to be 'subsonic' for this to work
+;; machine SUBSONIC_HOST login USERNAME password PASSWORD
 
 ;;; Code:
 (require 'json)
@@ -44,6 +42,12 @@
   "Customization group for mpv."
   :prefix "subsonic-"
   :group 'external)
+
+(defcustom subsonic-host ""
+  "Hostname for the subsonic service.
+Used to find the correct authinfo entry."
+  :type 'string
+  :group 'subsonic)
 
 (defcustom subsonic-mpv (executable-find "mpv")
   "Path to the mpv executable."
@@ -123,7 +127,7 @@ this case usually track lists"
      (lambda (_proc _string)))
     t))
 
-(defvar subsonic-auth (let ((auth (auth-source-search :port "subsonic")))
+(defvar subsonic-auth (let ((auth (auth-source-search :host subsonic-host)))
                         (when auth
                           (car auth))))
 
@@ -196,7 +200,8 @@ EXTRA-QUERY is used for any extra query parameters"
                                                ("v" . "1.16.0")
                                                ("f" . "json"))
                                              extra-query)))
-    (error "Failed to load .authinfo, please provide auth configuration for subsonic")))
+    (error "Failed to load .authinfo, please provide auth configuration for
+subsonic, and ensure subsonic-host is set correctly")))
 
 (defun subsonic-mpv-command (&rest args)
   "Generate a mpv ipc command using ARGS."

@@ -8,10 +8,10 @@ This is a subsonic client for emacs using mpv for music playing.
 
 Add a `~/.authinfo.gpg` or `~/.authinfo` file with the following contents
 
-    machine SUBSONIC_URL login USERNAME password PASSWORD port subsonic
+    machine SUBSONIC_URL login USERNAME password PASSWORD
 
-The `port` section here is used to identify the line as a subsonic
-server must be `subsonic`
+The `subsonic-host` must be set to the same value as SUBSONIC_URL in
+your init file, example below.
 
 ## Usage
 
@@ -24,12 +24,15 @@ Example use-package config:
   :commands subsonic
   :bind (("C-c m" . subsonic))
   :custom
+  (subsonic-url "coolsubsonic.example.com")
   (subsonic-enable-art t))
 ```
 
 Use the `subsonic` command to open a transient with commonly used
-commands available
+commands available.
 
+- `subsonic-host` to the domain of the subsonic server, used to find
+  the correct authinfo entry
 - `subsonic-enable-art` to `t` to enable album art
 - `subsonic-mpv-default-volume` to set default mpv volume
 
