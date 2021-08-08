@@ -69,6 +69,11 @@ Used to find the correct authinfo entry."
   :type 'string
   :group 'subsonic)
 
+(defcustom subsonic-ssl t
+  "Chooose either a https or http connection to subsonic."
+  :type 'boolean
+  :group 'subsonic)
+
 (defvar subsonic-mpv--volume subsonic-default-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
@@ -191,7 +196,9 @@ reverted upon image load and N specifies the index"
   "Build a valid subsonic url for a given ENDPOINT.
 EXTRA-QUERY is used for any extra query parameters"
   (if subsonic-auth
-      (concat "https://"
+      (concat (if subsonic-ssl
+				  "https://"
+				"http://")
               (plist-get subsonic-auth :host)
               "/rest" endpoint
               (subsonic-alist->query (append `(("u" . ,(plist-get subsonic-auth :user))

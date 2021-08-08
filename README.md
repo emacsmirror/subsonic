@@ -31,10 +31,14 @@ Example use-package config:
 Use the `subsonic` command to open a transient with commonly used
 commands available.
 
+
+Available settings:
 - `subsonic-host` to the domain of the subsonic server, used to find
   the correct authinfo entry
 - `subsonic-enable-art` to `t` to enable album art
 - `subsonic-mpv-default-volume` to set default mpv volume
+- `subsonic-ssl` set to `nil` to use a http connection when communcating
+  with the subsonic server, defaults to `t`
 
 ## Info
 
