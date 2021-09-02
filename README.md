@@ -39,6 +39,10 @@ Available settings:
 - `subsonic-mpv-default-volume` to set default mpv volume
 - `subsonic-ssl` set to `nil` to use a http connection when communcating
   with the subsonic server, defaults to `t`
+- `subsonic-curl-image-download` use curl for downloading images,
+  useful for improving image download consistency, defaults to `nil`.
+- `subsonic-curl-image-parallel` when using curl, use the --parallel
+  option for a speedup, defaults to t``
 
 ## Info
 

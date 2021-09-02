@@ -2,7 +2,7 @@
 
 ;; Author: Alex McGrath <amk@amk.ie>
 ;; URL: https://git.sr.ht/~amk/subsonic.el
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Keywords: multimedia
 ;; Package-Requires: ((emacs "27.1") (transient "0.2"))
 
@@ -71,6 +71,16 @@ Used to find the correct authinfo entry."
 
 (defcustom subsonic-ssl t
   "Choose either a https or http connection to subsonic."
+  :type 'boolean
+  :group 'subsonic)
+
+(defcustom subsonic-curl-image-download nil
+  "Use curl for downloading album images, can be a performance improvement"
+  :type 'boolean
+  :group 'subsonic)
+
+(defcustom subsonic-curl-image-parallel t
+  "Use --parallel when calling curl"
   :type 'boolean
   :group 'subsonic)
 
@@ -169,21 +179,63 @@ this case usually track lists"
   "Update a tablist VEC entry with an image from ID.
 BUFF is used to specify the buffer that will be
 reverted upon image load and N specifies the index"
+  (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
+      (aset vec n (subsonic-image-propertize id))
+    (url-retrieve (subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))
+                  (lambda (_status)
+                    (write-region (+ url-http-end-of-headers 1) (point-max)
+                                  (expand-file-name id subsonic-art-cache-path))
+                    (aset vec n (subsonic-image-propertize id))
+                    (set-buffer buff)
+                    (when (derived-mode-p 'tabulated-list-mode)
+                      (tabulated-list-revert))))))
+
+
+(defun subsonic-curl-images (entries n buff)
+  "Use curl to download images for each of the ENTRIES.
+N specifies the tablist index and BUFF is the buffer to be
+reverted."
+  (let ((curl-args (list "curl")))
+	(when subsonic-curl-image-parallel (setq curl-args (append  curl-args '("-Z"))))
+	(dolist (entry entries)
+	  (let ((id (car entry))
+			(vec (nth 1 entry)))
+		(if (file-exists-p (expand-file-name id subsonic-art-cache-path))
+			(aset vec n (subsonic-image-propertize id))
+		  (setq curl-args
+				(append
+				 curl-args
+				 `("-o"
+				   ,(expand-file-name id subsonic-art-cache-path)
+				   ,(subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))))))))
+	(let ((curl-process (apply #'start-process (append (list "subsonic-curl" nil)
+													   curl-args))))
+	  (set-process-sentinel
+	   curl-process
+	   (lambda (process _signal)
+		 (when (memq (process-status process) '(exit signal))
+		   (dolist (entry entries)
+			 (let ((id (car entry))
+				   (vec (nth 1 entry)))
+			   (when (file-exists-p (expand-file-name id subsonic-art-cache-path))
+				 (aset vec n (subsonic-image-propertize id))))
+			 (set-buffer buff)
+             (when (derived-mode-p 'tabulated-list-mode)
+               (tabulated-list-revert)))))))))
+
+(defun subsonic-get-images (entries n buff)
   (if (or (not subsonic-enable-art)
-          (not (display-graphic-p)))
-      (aset vec n "")
-    (when (not (file-exists-p subsonic-art-cache-path))
-      (mkdir subsonic-art-cache-path))
-    (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
-        (aset vec n (subsonic-image-propertize id))
-      (url-retrieve (subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))
-                    (lambda (_status)
-                      (write-region (+ url-http-end-of-headers 1) (point-max)
-                                    (expand-file-name id subsonic-art-cache-path))
-                      (aset vec n (subsonic-image-propertize id))
-                      (set-buffer buff)
-                      (when (derived-mode-p 'tabulated-list-mode)
-                        (tabulated-list-revert)))))))
+		  (not (display-graphic-p)))
+	  (dolist (entry tabulated-list-entries)
+		(aset (nth 1 entry) n ""))
+	(progn
+	  (when (not (file-exists-p subsonic-art-cache-path))
+		(mkdir subsonic-art-cache-path))
+	  (if subsonic-curl-image-download
+		  (subsonic-curl-images entries n (current-buffer))
+		(dolist (entry tabulated-list-entries)
+		  (subsonic-get-image (car entry) (nth 1 entry) n buff))))))
+
 
 (defun subsonic-recursive-assoc (data keys)
   "Recursively assoc DATA from a list of KEYS."
@@ -390,8 +442,7 @@ subsonic, and ensure subsonic-host is set correctly")))
   (setq tabulated-list-entries
         (subsonic-albums-parse
          (subsonic-get-json (subsonic-build-url "/getArtist.view" `(("id" . ,id))))))
-  (dolist (entry tabulated-list-entries)
-    (subsonic-get-image (car entry) (nth 1 entry) 2 (current-buffer))))
+  (subsonic-get-images tabulated-list-entries 2 (current-buffer)))
 
 
 (defun subsonic-albums-refresh-type (type)
@@ -400,8 +451,7 @@ subsonic, and ensure subsonic-host is set correctly")))
         (subsonic-albums-type-parse
          (subsonic-get-json (subsonic-build-url "/getAlbumList2.view" `(("type" . ,type)
                                                                         ("size" . "50"))))))
-  (dolist (entry tabulated-list-entries)
-    (subsonic-get-image (car entry) (nth 1 entry) 2 (current-buffer))))
+  (subsonic-get-images tabulated-list-entries 2 (current-buffer)))
 
 (defun subsonic-open-tracks ()
   "Open a list of tracks at point."
@@ -517,9 +567,9 @@ subsonic, and ensure subsonic-host is set correctly")))
   "Refresh the list of podcasts."
   (setq tabulated-list-entries
         (subsonic-podcasts-parse
-         (subsonic-get-json (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false"))))))
-  (dolist (entry tabulated-list-entries)
-    (subsonic-get-image (car entry) (nth 1 entry) 1 (current-buffer))))
+         (subsonic-get-json
+		  (subsonic-build-url "/getPodcasts.view" '(("includeEpisodes" . "false"))))))
+  (subsonic-get-images tabulated-list-entries 1 (current-buffer)))
 
 
 (defun subsonic-open-podcast-episodes ()
@@ -554,6 +604,7 @@ subsonic, and ensure subsonic-host is set correctly")))
     (set-buffer new-buff)
     (setq buffer-read-only t)
     (subsonic-podcast-mode)
+	(subsonic-podcasts-refresh)
     (tabulated-list-revert)
     (pop-to-buffer (current-buffer))))
 
@@ -561,7 +612,6 @@ subsonic, and ensure subsonic-host is set correctly")))
   "Subsonic Podcasts"
   (setq tabulated-list-format [("Podcasts" 30 t) ("Art" 20 nil)])
   (setq tabulated-list-padding 2)
-  (add-hook 'tabulated-list-revert-hook #'subsonic-podcasts-refresh nil t)
   (tabulated-list-init-header))
 
 ;;;
