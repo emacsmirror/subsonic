@@ -70,7 +70,7 @@ Used to find the correct authinfo entry."
   :group 'subsonic)
 
 (defcustom subsonic-ssl t
-  "Chooose either a https or http connection to subsonic."
+  "Choose either a https or http connection to subsonic."
   :type 'boolean
   :group 'subsonic)
 
