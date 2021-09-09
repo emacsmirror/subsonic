@@ -84,7 +84,7 @@ Used to find the correct authinfo entry."
   :type 'boolean
   :group 'subsonic)
 
-(defcustom subsonic-album-list-count 30
+(defcustom subsonic-album-list-count 50
   "Number of albums to display in random/newest albums etc."
   :type 'integer
   :group 'subsonic)
