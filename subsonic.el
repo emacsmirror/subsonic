@@ -84,6 +84,11 @@ Used to find the correct authinfo entry."
   :type 'boolean
   :group 'subsonic)
 
+(defcustom subsonic-album-list-count 30
+  "Number of albums to display in random/newest albums etc."
+  :type 'integer
+  :group 'subsonic)
+
 (defvar subsonic-mpv--volume subsonic-default-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
@@ -449,8 +454,10 @@ subsonic, and ensure subsonic-host is set correctly")))
   "Refresh the albums list for a given albumlist TYPE."
   (setq tabulated-list-entries
         (subsonic-albums-type-parse
-         (subsonic-get-json (subsonic-build-url "/getAlbumList2.view" `(("type" . ,type)
-                                                                        ("size" . "50"))))))
+         (subsonic-get-json (subsonic-build-url
+							 "/getAlbumList2.view"
+							 `(("type" . ,type)
+                               ("size" . ,(number-to-string subsonic-album-list-count)))))))
   (subsonic-get-images tabulated-list-entries 2 (current-buffer)))
 
 (defun subsonic-open-tracks ()
