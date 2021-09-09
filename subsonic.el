@@ -75,12 +75,12 @@ Used to find the correct authinfo entry."
   :group 'subsonic)
 
 (defcustom subsonic-curl-image-download nil
-  "Use curl for downloading album images, can be a performance improvement"
+  "Use curl for downloading album images, can be a performance improvement."
   :type 'boolean
   :group 'subsonic)
 
 (defcustom subsonic-curl-image-parallel t
-  "Use --parallel when calling curl"
+  "Use --parallel when calling curl."
   :type 'boolean
   :group 'subsonic)
 
