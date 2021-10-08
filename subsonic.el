@@ -292,6 +292,19 @@ subsonic, and ensure subsonic-host is set correctly")))
   (interactive)
   (subsonic-mpv-command "playlist-prev"))
 
+;;;###autoload
+(defun subsonic-seek-forward ()
+  "Toggle playing/paused state in mpv."
+  (interactive)
+  (subsonic-mpv-command "seek" "30" "relative")
+  (subsonic))
+
+(defun subsonic-seek-back ()
+  "Toggle playing/paused state in mpv."
+  (interactive)
+  (subsonic-mpv-command "seek" "-30" "relative")
+  (subsonic))
+
 ;;;
 ;;; Search
 ;;;
@@ -696,7 +709,9 @@ subsonic, and ensure subsonic-host is set correctly")))
   ["Controls"
    ("t" "Toggle playing" subsonic-toggle-playing)
    ("f" "Skip track" subsonic-skip-track)
-   ("b" "Previous track" subsonic-prev-track)])
+   ("b" "Previous track" subsonic-prev-track)
+   ("F" "Seek forward" subsonic-seek-forward)
+   ("B" "Seek back" subsonic-seek-back)])
 
 (provide 'subsonic)
 
