@@ -61,6 +61,11 @@ Used to find the correct authinfo entry."
   :type 'boolean
   :group 'subsonic)
 
+(defcustom subsonic-art-size 100
+  "Set size for the subsonic album art download query."
+  :type 'integer
+  :group 'subsonic)
+
 (defcustom subsonic-art-cache-path (expand-file-name "subsonic-cache" user-emacs-directory)
   "Path to store cached subsonic art."
   :type 'string
@@ -188,7 +193,9 @@ reverted upon image load and N specifies the index"
   (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
     (aset vec n (subsonic-image-propertize id))
     (url-retrieve
-      (subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))
+      (subsonic-build-url
+        "/getCoverArt.view"
+        `(("id" . ,id) ("size" . ,(int-to-string subsonic-art-size))))
       (lambda (_status)
         (write-region
           (+ url-http-end-of-headers 1)
@@ -198,7 +205,6 @@ reverted upon image load and N specifies the index"
         (set-buffer buff)
         (when (derived-mode-p 'tabulated-list-mode)
           (tabulated-list-revert))))))
-
 
 (defun subsonic-curl-images (entries n buff)
   "Use curl to download images for each of the ENTRIES.
@@ -220,7 +226,10 @@ reverted."
               `
               ("-o"
                 ,(expand-file-name id subsonic-art-cache-path)
-                ,(subsonic-build-url "/getCoverArt.view" `(("id" . ,id)))))))))
+                ,
+                (subsonic-build-url
+                  "/getCoverArt.view"
+                  `(("id" . ,id) ("size" . ,(int-to-string subsonic-art-size))))))))))
     (let ((curl-process (apply #'start-process (append (list "subsonic-curl" nil) curl-args))))
       (set-process-sentinel
         curl-process
