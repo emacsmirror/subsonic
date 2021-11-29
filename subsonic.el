@@ -327,6 +327,12 @@ subsonic, and ensure subsonic-host is set correctly")))
   (subsonic-mpv-command "seek" "-30" "relative")
   (subsonic))
 
+(defun subsonic-get-id-as-string (data)
+  (let ((id (assoc-default "id" data)))
+	(if (numberp id)
+	  (number-to-string id)
+	  id)))
+
 ;;;
 ;;; Search
 ;;;
@@ -338,21 +344,21 @@ subsonic, and ensure subsonic-host is set correctly")))
       (result
         (append
           (mapcar
-            (lambda (artist)
-              (list
-                `(,(assoc-default "id" artist) . "artist")
+           (lambda (artist)
+             (list
+                `(,(subsonic-get-id-as-string artist) . "artist")
                 (vector "Artist" (assoc-default "name" artist))))
             (assoc-default "artist" search-results))
           (mapcar
             (lambda (album)
               (list
-                `(,(assoc-default "id" album) . "album")
+                `(,(subsonic-get-id-as-string album) . "album")
                 (vector "Album" (assoc-default "name" album))))
             (assoc-default "album" search-results))
           (mapcar
             (lambda (song)
               (list
-                `(,(assoc-default "id" song) . "song")
+                `(,(subsonic-get-id-as-string song) . "song")
                 (vector "Song" (assoc-default "title" song))))
             (assoc-default "song" search-results)))))
     result))
@@ -433,7 +439,7 @@ subsonic, and ensure subsonic-host is set correctly")))
           (lambda (track)
             (let* ((duration (assoc-default "duration" track)))
               (list
-                (assoc-default "id" track)
+                (subsonic-get-id-as-string track)
                 (vector
                   (assoc-default "title" track)
                   (format-seconds "%m:%.2s" duration)
@@ -491,7 +497,7 @@ subsonic, and ensure subsonic-host is set correctly")))
         (mapcar
           (lambda (album)
             (list
-              (assoc-default "id" album)
+              (subsonic-get-id-as-string album)
               (vector
                 (format "%d" (or (assoc-default "year" album) 0))
                 (assoc-default "name" album)
@@ -508,7 +514,7 @@ subsonic, and ensure subsonic-host is set correctly")))
         (mapcar
           (lambda (album)
             (list
-              (assoc-default "id" album)
+              (subsonic-get-id-as-string album)
               (vector (assoc-default "name" album) (assoc-default "artist" album) "")))
           albums)))
     result))
@@ -611,7 +617,7 @@ subsonic, and ensure subsonic-host is set correctly")))
               accu
               (mapcar
                 (lambda (artist)
-                  (list (assoc-default "id" artist) (vector (assoc-default "name" artist))))
+                  (list (subsonic-get-id-as-string artist) (vector (assoc-default "name" artist))))
                 (assoc-default "artist" artist-index))))
           artists '())))
     result))
@@ -657,7 +663,7 @@ subsonic, and ensure subsonic-host is set correctly")))
       (result
         (mapcar
           (lambda (channel)
-            (list (assoc-default "id" channel) (vector (assoc-default "title" channel) "")))
+            (list (subsonic-get-id-as-string channel) (vector (assoc-default "title" channel) "")))
           podcasts)))
     result))
 
@@ -732,7 +738,7 @@ subsonic, and ensure subsonic-host is set correctly")))
         (mapcar
           (lambda (episode)
             (list
-              (assoc-default "id" episode)
+              (subsonic-get-id-as-string episode)
               (vector
                 (assoc-default "title" episode)
                 (format-seconds "%h:%.2m:%.2s" (assoc-default "duration" episode))
