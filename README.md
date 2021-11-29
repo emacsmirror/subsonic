@@ -43,6 +43,8 @@ other servers
 
 ## Contributing/Issues
 
+For quick questions, I'm `amk` on libera.chat, you can find me in #emacs
+
 Please send any patches or share any issues you may have on the mailing list here:
 https://lists.sr.ht/~amk/public-inbox
 
