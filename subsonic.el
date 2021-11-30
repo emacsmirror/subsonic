@@ -289,12 +289,14 @@ subsonic, and ensure subsonic-host is set correctly")))
 
 (defun subsonic-mpv-command (&rest args)
   "Generate a mpv ipc command using ARGS."
-  (tq-enqueue
-    subsonic-mpv--queue
-    (concat (json-serialize (list 'command (apply #'vector args))) "\n")
-    ""
-    nil
-    (lambda (_x _y))))
+  (if subsonic-mpv--queue
+	  (tq-enqueue
+       subsonic-mpv--queue
+       (concat (json-serialize (list 'command (apply #'vector args))) "\n")
+       ""
+       nil
+       (lambda (_x _y)))
+	(message "MPV not running")))
 
 ;;;###autoload
 (defun subsonic-toggle-playing ()
