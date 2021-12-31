@@ -96,6 +96,11 @@ Used to find the correct authinfo entry."
   :type 'boolean
   :group 'subsonic)
 
+(defcustom subsonic-scrobble-plays nil
+  "Request that the subsonic server scrobble played tracks."
+  :type 'boolean
+  :group 'subsonic)
+
 (defvar subsonic-mpv--volume subsonic-default-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
@@ -117,9 +122,19 @@ Used to find the correct authinfo entry."
   "Return non-nil if inferior mpv is running."
   (and subsonic-mpv--process (eq (process-status subsonic-mpv--process) 'run)))
 
-(defun subsonic-mpv-start (args)
+(defvar subsonic--playlist '())
+
+(defun subsonic-mpv-start (ids)
+  "Start mpv and play a given list of IDS."
+  (setq subsonic--playlist ids)
+  (subsonic-scrobble (car ids) t)  ;; send a now-playing for the first track
+  (subsonic--mpv-start
+   (mapcar (lambda (id) (subsonic-build-url "/stream.view" `(("id" . ,id))))
+		   ids)))
+
+(defun subsonic--mpv-start (playlist)
   "Used to start mpv.
-ARGS are any extra arguments to provide to mpv, in
+PLAYLIST are any extra arguments to provide to mpv, in
 this case usually track lists"
   (subsonic-mpv-kill)
   (let ((socket (make-temp-name (expand-file-name "subsonic-mpv-" temporary-file-directory))))
@@ -135,7 +150,7 @@ this case usually track lists"
             "--no-video"
             (format "--volume=%d" subsonic-mpv--volume)
             (concat "--input-ipc-server=" socket))
-          args)))
+          playlist)))
     (set-process-query-on-exit-flag subsonic-mpv--process nil)
     (set-process-sentinel
       subsonic-mpv--process
@@ -149,9 +164,36 @@ this case usually track lists"
         (sleep-for 0.05)))
     (setq subsonic-mpv--queue
       (tq-create
-        (make-network-process :name "subsonic-mpv-socket" :family 'local :service socket)))
-    (set-process-filter (tq-process subsonic-mpv--queue) (lambda (_proc _string)))
-    t))
+       (make-network-process :name "subsonic-mpv-socket"
+							 :family 'local
+							 :service socket)))
+    (set-process-filter (tq-process subsonic-mpv--queue) #'subsonic--mpv-socket-filter)
+	t))
+
+(defun subsonic--mpv-socket-filter (_ output)
+  "Filter the mpv socket connection.
+OUTPUT is the stdout read from mpv"
+  (when subsonic-scrobble-plays
+	(dolist (parsed-response (mapcar #'json-read-from-string
+									 (split-string output "\n" t)))
+	  (let ((event (alist-get 'event parsed-response)))
+		(cond
+		 ((string-equal event "end-file")
+          (subsonic-scrobble (nth (- (alist-get 'playlist_entry_id parsed-response) 1)
+								  subsonic--playlist)))
+		 ((string-equal event "start-file")
+          (subsonic-scrobble (nth (- (alist-get 'playlist_entry_id parsed-response) 1)
+								  subsonic--playlist)
+							 t)))))))
+
+(defun subsonic-scrobble (id &optional now-playing)
+  "Scrobble ID and optionally use a NOW-PLAYING request."
+  (when subsonic-scrobble-plays
+	(url-retrieve (subsonic-build-url "/scrobble.view"
+									  `(("id" . ,id)
+										;; send a submission by default
+										("submission" . ,(if now-playing "false" "true"))))
+				  (lambda (_)))))
 
 (defvar subsonic-auth
   (let ((auth (auth-source-search :host subsonic-host)))
@@ -198,7 +240,7 @@ reverted upon image load and N specifies the index"
   (if (file-exists-p (expand-file-name id subsonic-art-cache-path))
     (aset vec n (subsonic-image-propertize id))
     (url-retrieve
-      (subsonic-build-url
+     (subsonic-build-url
         "/getCoverArt.view"
         `(("id" . ,id) ("size" . ,(int-to-string subsonic-art-size))))
       (lambda (_status)
@@ -385,8 +427,7 @@ subsonic, and ensure subsonic-host is set correctly")))
       ((string-equal type "album")
         (subsonic-tracks (car result)))
       ((string-equal type "song")
-        (subsonic-mpv-start
-          (list (subsonic-build-url "/stream.view" `(("id" . ,(car result))))))))))
+       (subsonic-mpv-start (list (car result)))))))
 
 (defun subsonic-open-search-result ()
   "Open a view of the result from the result at point."
@@ -470,10 +511,7 @@ subsonic, and ensure subsonic-host is set correctly")))
 (defun subsonic-play-tracks ()
   "Play all the tracks after the point in the list."
   (interactive)
-  (subsonic-mpv-start
-    (mapcar
-      (lambda (id) (subsonic-build-url "/stream.view" `(("id" . ,id))))
-      (subsonic-get-tracklist-id (tabulated-list-get-id)))))
+  (subsonic-mpv-start (subsonic-get-tracklist-id (tabulated-list-get-id))))
 
 (defvar subsonic-tracks-mode-map
   (let ((map (make-sparse-keymap)))
@@ -762,8 +800,7 @@ subsonic, and ensure subsonic-host is set correctly")))
 (defun subsonic-play-podcast ()
   "Play a podcast episode at point."
   (interactive)
-  (subsonic-mpv-start
-    (list (subsonic-build-url "/stream.view" `(("id" . ,(tabulated-list-get-id)))))))
+  (subsonic-mpv-start (list (tabulated-list-get-id))))
 
 (defun subsonic-podcasts-episode-refresh (id)
   "Refresh the list of podcast episodes for a podcast ID."
