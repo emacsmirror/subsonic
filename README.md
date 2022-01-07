@@ -48,8 +48,9 @@ For quick questions, I'm `amk` on libera.chat, you can find me in #emacs
 Please send any patches or share any issues you may have on the mailing list here:
 https://lists.sr.ht/~amk/public-inbox
 
-Prefer sending mail to the mailing list before opening a TODO ticket --
-https://todo.sr.ht/~amk/subsonic.el
+or alternatively if you prefer a pull-request style flow :
+https://codeberg.org/amk/subsonic.el
+
 
 ## Screenshots
 
