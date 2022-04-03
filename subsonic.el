@@ -158,7 +158,7 @@ this case usually track lists"
         (when (memq (process-status process) '(exit signal))
           (subsonic-mpv-kill)
           (when (file-exists-p socket)
-            (with-demoted-errors (delete-file socket))))))
+            (with-demoted-errors "%S" (delete-file socket))))))
     (with-timeout (0.5 (subsonic-mpv-kill) (error "Failed to connect to mpv"))
       (while (not (file-exists-p socket))
         (sleep-for 0.05)))
