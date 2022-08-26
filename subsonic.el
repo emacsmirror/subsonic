@@ -620,17 +620,19 @@ subsonic, and ensure subsonic-host is set correctly")))
 
 (defun subsonic-albums (&optional id type)
   "Open a buffer of albums for artist ID or list TYPE."
-  (let ((new-buff (get-buffer-create "*subsonic-albums*")))
-    (set-buffer new-buff)
-    (cond
-      (id
-        (subsonic-album-mode)
-        (subsonic-albums-refresh id))
-      (type
-        (subsonic-album-type-mode)
-        (subsonic-albums-refresh-type type)))
-    (tabulated-list-revert)
-    (pop-to-buffer-same-window (current-buffer))))
+  (cond
+   (id
+	(let ((new-buff (get-buffer-create "*subsonic-artist-albums*")))
+	  (set-buffer new-buff)
+	  (subsonic-album-mode)
+	  (subsonic-albums-refresh id)))
+   (type
+    (let ((new-buff (get-buffer-create "*subsonic-albums*")))
+	  (set-buffer new-buff)
+	  (subsonic-album-type-mode)
+	  (subsonic-albums-refresh-type type))))
+  (tabulated-list-revert)
+  (pop-to-buffer-same-window (current-buffer)))
 
 (define-derived-mode
   subsonic-album-type-mode
