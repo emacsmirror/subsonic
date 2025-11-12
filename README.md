@@ -24,8 +24,13 @@ Example use-package config:
   :commands subsonic
   :bind (("C-c m" . subsonic))
   :custom
-  (subsonic-url "coolsubsonic.example.com")
+  (subsonic-host "coolsubsonic.example.com")
   (subsonic-enable-art t))
+```
+
+In case you are running subsonic server without HTTPS ( HTTP only), add following line to the use-package :custom block 
+```
+(subsonic-ssl nil)
 ```
 
 Use the `subsonic` command to open a transient with commonly used
