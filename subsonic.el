@@ -101,6 +101,11 @@ Used to find the correct authinfo entry."
   :type 'boolean
   :group 'subsonic)
 
+(defcustom subsonic-mpv-timeout 0.5
+  "How long to wait when starting or killing the mpv process."
+  :type 'float
+  :group 'subsonic)
+
 (defvar subsonic-mpv--volume subsonic-default-volume)
 (defvar subsonic-mpv--process nil)
 (defvar subsonic-mpv--queue nil)
@@ -112,7 +117,7 @@ Used to find the correct authinfo entry."
     (tq-close subsonic-mpv--queue))
   (when (subsonic-mpv-live-p)
     (kill-process subsonic-mpv--process))
-  (with-timeout (0.5 (error "Failed to kill mpv"))
+  (with-timeout (subsonic-mpv-timeout (error "Failed to kill mpv"))
     (while (subsonic-mpv-live-p)
       (sleep-for 0.05)))
   (setq subsonic-mpv--process nil)
@@ -159,7 +164,7 @@ this case usually track lists"
           (subsonic-mpv-kill)
           (when (file-exists-p socket)
             (with-demoted-errors "%S" (delete-file socket))))))
-    (with-timeout (0.5 (subsonic-mpv-kill) (error "Failed to connect to mpv"))
+    (with-timeout (subsonic-mpv-timeout (subsonic-mpv-kill) (error "Failed to connect to mpv"))
       (while (not (file-exists-p socket))
         (sleep-for 0.05)))
     (setq subsonic-mpv--queue
